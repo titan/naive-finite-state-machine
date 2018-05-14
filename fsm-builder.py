@@ -3,7 +3,7 @@
 def normalize(string):
     if len(string) > 0 and string[0].isdigit():
         string = "number_" + string
-    return string.replace(' == ', '_EQUALS_').replace(' != ', '_NOT_EQUALS_').replace(':=', '_ASSIGN_TO_').replace(' = ', '_EQUALS_').replace('=', '_EQUALS_').replace(' + ', '_PLUS_').replace('+', '_PLUS_').replace(' - ', '_MINUS_').replace('-', '_').replace(' > ', '_GREATER_THAN_').replace('>', 'GREATER_THAN').replace(' < ', '_LESS_THAN_').replace('<', 'LESS_THAN').replace(': ', '_COLON_').replace(':', '_COLON_').replace(', ', '_COMMA_').replace(',', '_COMMA_').replace('"', '_QUOTATION_').replace('.', '_DOT_').replace('?', '_QUESTION_').replace(' ', '_').replace('\n', '_NEWLINE_').upper()
+    return string.replace(' == ', '_EQUALS_').replace(' != ', '_NOT_EQUALS_').replace(':=', '_ASSIGN_TO_').replace(' = ', '_EQUALS_').replace('=', '_EQUALS_').replace(' + ', '_PLUS_').replace('+', '_PLUS_').replace(' - ', '_MINUS_').replace('-', '_').replace(' > ', '_GREATER_THAN_').replace('>', 'GREATER_THAN').replace(' < ', '_LESS_THAN_').replace('<', 'LESS_THAN').replace(': ', '_COLON_').replace(':', '_COLON_').replace(', ', '_COMMA_').replace(',', '_COMMA_').replace('"', '_QUOTATION_').replace('.', '_DOT_').replace('?', '_QUESTION_').replace(' ', '_').replace('\n', '_NEWLINE_').replace('#', 'SHARP').upper()
 
 def load_model(prefix, filename):
     import xlrd
