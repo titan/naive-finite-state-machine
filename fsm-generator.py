@@ -57,7 +57,7 @@ def action(prefix, actions):
     return output
 
 def transforming(prefix, states, events, transformings):
-    output = "enum %s_STATE %s_state_transform(enum %s_STATE state, enum %s_EVENT event, void * data) {\n" % (prefix, prefix.lower(), prefix, prefix)
+    output = "enum %s_STATE %s_transform_state(enum %s_STATE state, enum %s_EVENT event, void * data) {\n" % (prefix, prefix.lower(), prefix, prefix)
     output += ' ' * 2 + 'switch (event) {\n'
     for i in range(len(events)):
         output += ' ' * 2 + 'case ' + events[i] + ': {\n'
@@ -81,28 +81,39 @@ def transforming(prefix, states, events, transformings):
     output += "}\n"
     return output
 
-def main(src, output, prefix, defination, implementation):
+def main(src, prefix, directory, defination, implementation):
     (states, events, actions, transformings) = load_model(prefix, src)
-    if implementation:
-        output.write(transforming(prefix, states, events, transformings))
-        output.write("\n");
-    else:
+    import os.path
+    if directory == None:
+        directory = os.path.dirname(src)
+    (root, ext) = os.path.splitext(os.path.basename(src))
+    header = root + ".h"
+    if defination == None:
+        defination = os.path.join(directory, header)
+    if implementation == None:
+        implementation = os.path.join(directory, root + ".c")
+    with open(defination, 'w') as output:
         output.write(state(prefix, states))
         output.write("\n");
         output.write(event(prefix, events))
         output.write("\n");
         output.write(action(prefix, actions))
         output.write("\n");
-        output.write("enum %s_STATE %s_state_transform(enum %s_STATE state, enum %s_EVENT event, void * data);\n" % (prefix, prefix.lower(), prefix, prefix))
+        output.write("enum %s_STATE %s_transform_state(enum %s_STATE state, enum %s_EVENT event, void * data);\n" % (prefix, prefix.lower(), prefix, prefix))
+        output.write("extern void %s_do_action(enum %s_ACTION action, void * data);\n" % (prefix.lower(), prefix))
+    with open(implementation, 'w') as output:
+        output.write('#include "%s"\n' % header)
+        output.write(transforming(prefix, states, events, transformings))
+        output.write("\n");
 
 if __name__ == '__main__':
     import argparse
     import sys
     parser = argparse.ArgumentParser()
-    parser.add_argument("src", help="the defination of state machine in xlsx")
-    parser.add_argument("-o", "--output", default=sys.stdout, type=argparse.FileType('w'), help="Save output to the file")
+    parser.add_argument("src", help="The defination of state machine in xlsx")
     parser.add_argument("-p", "--prefix", default="", help="The prefix of generated structures and functions")
-    parser.add_argument("--defination", default=True, action="store_true", help="Output definations")
-    parser.add_argument("--implementation", default=False, action="store_true", help="Output implementation")
+    parser.add_argument("-d", "--directory", help="The directory of generated files")
+    parser.add_argument("--defination", help="The filename of definations header")
+    parser.add_argument("--implementation", help="The filename of implementation")
     args = parser.parse_args()
-    main(args.src, args.output, normalize(args.prefix), args.defination, args.implementation)
+    main(args.src, normalize(args.prefix), args.directory, args.defination, args.implementation)
