@@ -30,6 +30,8 @@ def load_model(prefix, filename):
                 if action:
                     action = prefix + "_" + action + "_ACTION"
                     actions[action] = 0
+                if state == "":
+                    state = normalize(wx.cell(i, 0).value)
                 transformings[i - 1].append((action, prefix + "_" + state + "_STATE"))
             else:
                 transformings[i - 1].append((None, None))
