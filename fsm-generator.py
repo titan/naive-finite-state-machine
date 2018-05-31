@@ -58,7 +58,7 @@ def action(prefix, actions):
     output += "};\n"
     return output
 
-def transforming(prefix, states, events, transformings):
+def transforming(prefix, states, events, transformings, debug):
     output = "enum %s_STATE %s_transform_state(enum %s_STATE state, enum %s_EVENT event, void * data) {\n" % (prefix, prefix.lower(), prefix, prefix)
     output += ' ' * 2 + 'switch (event) {\n'
     for i in range(len(events)):
@@ -69,11 +69,19 @@ def transforming(prefix, states, events, transformings):
             if state:
                 if action:
                     output += ' ' * 4 + 'case ' + states[j] + ': {\n'
+                    if debug:
+                        output += ' ' * 6 + 'puts("%s occurred in %s\\n");\n' % (events[i], states[j])
                     output += ' ' * 6 + '%s_do_action(%s, data);\n' % (prefix.lower(), action)
                     output += ' ' * 6 + 'return %s;\n' % state
                     output += ' ' * 4 + '}\n'
                 else:
-                    output += ' ' * 4 + 'case %s: return %s;\n' % (states[j], state)
+                    if debug:
+                        output += ' ' * 4 + 'case %s: {\n' % states[j]
+                        output += ' ' * 6 + 'puts("%s occurred in %s\\n");\n' % (events[i], states[j])
+                        output += ' ' * 6 + 'return %s;\n' % state
+                        output += ' ' * 4 + '}\n'
+                    else:
+                        output += ' ' * 4 + 'case %s: return %s;\n' % (states[j], state)
         output += ' ' * 4 + 'default: return state;\n'
         output += ' ' * 4 + '}\n'
         output += ' ' * 4 + 'break;\n'
@@ -83,7 +91,7 @@ def transforming(prefix, states, events, transformings):
     output += "}\n"
     return output
 
-def main(src, prefix, directory, defination, implementation):
+def main(src, prefix, directory, defination, implementation, debug):
     (states, events, actions, transformings) = load_model(prefix, src)
     import os.path
     if directory == None:
@@ -102,10 +110,12 @@ def main(src, prefix, directory, defination, implementation):
         output.write(action(prefix, actions))
         output.write("\n");
         output.write("enum %s_STATE %s_transform_state(enum %s_STATE state, enum %s_EVENT event, void * data);\n" % (prefix, prefix.lower(), prefix, prefix))
-        output.write("extern void %s_do_action(enum %s_ACTION action, void * data);\n" % (prefix.lower(), prefix))
+        output.write("void %s_do_action(enum %s_ACTION action, void * data);\n" % (prefix.lower(), prefix))
     with open(implementation, 'w') as output:
+        if debug:
+            output.write('#include <stdio.h>\n')
         output.write('#include "%s"\n' % header)
-        output.write(transforming(prefix, states, events, transformings))
+        output.write(transforming(prefix, states, events, transformings, debug))
         output.write("\n");
 
 if __name__ == '__main__':
@@ -117,5 +127,6 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--directory", help="The directory of generated files")
     parser.add_argument("--defination", help="The filename of definations header")
     parser.add_argument("--implementation", help="The filename of implementation")
+    parser.add_argument("--debug", action='store_true', help="Output debug info in console")
     args = parser.parse_args()
-    main(args.src, normalize(args.prefix), args.directory, args.defination, args.implementation)
+    main(args.src, normalize(args.prefix), args.directory, args.defination, args.implementation, args.debug)
