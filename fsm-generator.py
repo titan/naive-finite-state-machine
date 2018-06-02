@@ -16,22 +16,22 @@ def load_model(prefix, filename):
     headers = wx.row(0)
     for i in range(1, len(headers)):
         cell = headers[i].value
-        events.append(prefix + "_" + normalize(cell) + "_EVENT")
+        events.append(prefix + "_" + normalize(str(cell)) + "_EVENT")
     slides = wx.col(0)
     for i in range(1, len(slides)):
         cell = slides[i].value
-        states.append(prefix + "_" + normalize(cell) + "_STATE")
+        states.append(prefix + "_" + normalize(str(cell)) + "_STATE")
     for i in range(1, wx.nrows):
         transformings.append([])
         for j in range(1, wx.ncols):
             cell = wx.cell(i, j).value
             if len(cell) > 0:
-                [action, state] = normalize(cell).split("\\")
+                [action, state] = normalize(str(cell)).split("\\")
                 if action:
                     action = prefix + "_" + action + "_ACTION"
                     actions[action] = 0
                 if state == "":
-                    state = normalize(wx.cell(i, 0).value)
+                    state = normalize(str(wx.cell(i, 0).value))
                 transformings[i - 1].append((action, prefix + "_" + state + "_STATE"))
             else:
                 transformings[i - 1].append((None, None))
