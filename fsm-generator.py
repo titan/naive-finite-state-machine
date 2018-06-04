@@ -114,7 +114,27 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
     else:
         state_type = 'unsigned char'
 
-    output = state_type + " %s_transform_states[%d][%d] = {\n" % (prefix.lower(), len(states), len(events))
+    output = ""
+
+    if debug:
+
+        output += "char * %s_state_strings[%d] = {\n" % (prefix.lower(), len(states))
+        for s in states:
+            output += ' ' * 2 + '"%s",\n' % s
+        output += "};\n"
+
+        output += "char * %s_event_strings[%d] = {\n" % (prefix.lower(), len(events))
+        for e in events:
+            output += ' ' * 2 + '"%s",\n' % e
+        output += "};\n"
+
+        output += "char * %s_action_strings[%d] = {\n" % (prefix.lower(), len(actions) + 1)
+        output += ' ' * 2 + '"N/A",\n'
+        for a in actions:
+            output += ' ' * 2 + '"%s",\n' % a
+        output += "};\n"
+
+    output += state_type + " %s_transform_states[%d][%d] = {\n" % (prefix.lower(), len(states), len(events))
     for i in range(len(states)):
         output += ' ' * 2 + '{'
         for j in range(len(events)):
@@ -140,7 +160,15 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
     output += "};\n"
     output += "enum %s_STATE %s_transform_state(enum %s_STATE state, enum %s_EVENT event, void * data) {\n" % (prefix, prefix.lower(), prefix, prefix)
     if debug:
-        output += ' ' * 2 + 'printf("%s_EVENT %%d occurred in state %%d\\n", event, state);\n' % (prefix)
+        output += ' ' * 2 + 'puts("(");\n'
+        output += ' ' * 2 + 'puts(%s_event_strings[event]);\n' % prefix.lower()
+        output += ' ' * 2 + 'puts(", ");\n'
+        output += ' ' * 2 + 'puts(%s_state_strings[state]);\n' % prefix.lower()
+        output += ' ' * 2 + 'puts(") => (");\n'
+        output += ' ' * 2 + 'puts(%s_action_strings[%s_transform_actions[state][event]]);\n' % (prefix.lower(), prefix.lower())
+        output += ' ' * 2 + 'puts(", ");\n'
+        output += ' ' * 2 + 'puts(%s_state_strings[%s_transform_states[state][event]]);\n' % (prefix.lower(), prefix.lower())
+        output += ' ' * 2 + 'puts(")\\n");\n'
     output += ' ' * 2 + '%s_do_action(%s_transform_actions[state][event], data);\n' % (prefix.lower(), prefix.lower())
     output += ' ' * 2 + 'return %s_transform_states[state][event];\n' % (prefix.lower())
     output += "}\n"
