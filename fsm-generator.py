@@ -76,14 +76,14 @@ def code_transforming(prefix, states, events, transformings, debug):
                 if action:
                     output += ' ' * 4 + 'case ' + states[j] + ': {\n'
                     if debug:
-                        output += ' ' * 6 + 'puts("%s occurred in %s\\n");\n' % (events[i], states[j])
+                        output += ' ' * 6 + 'puts("(%s, %s) => (%s, %s)\\n");\n' % (events[i], states[j], action, state)
                     output += ' ' * 6 + '%s_do_action(%s, data);\n' % (prefix.lower(), action)
                     output += ' ' * 6 + 'return %s;\n' % state
                     output += ' ' * 4 + '}\n'
                 else:
                     if debug:
                         output += ' ' * 4 + 'case %s: {\n' % states[j]
-                        output += ' ' * 6 + 'puts("%s occurred in %s\\n");\n' % (events[i], states[j])
+                        output += ' ' * 6 + 'puts("(%s, %s) => (N/A, %s)\\n");\n' % (events[i], states[j], state)
                         output += ' ' * 6 + 'return %s;\n' % state
                         output += ' ' * 4 + '}\n'
                     else:
