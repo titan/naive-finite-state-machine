@@ -3,7 +3,7 @@
 def normalize(string):
     #if len(string) > 0 and string[0].isdigit():
     #    string = "number_" + string
-    return string.replace(' == ', '_EQUALS_').replace(' != ', '_NOT_EQUALS_').replace(':=', '_ASSIGN_TO_').replace(' = ', '_EQUALS_').replace('=', '_EQUALS_').replace(' + ', '_PLUS_').replace('+', '_PLUS_').replace(' - ', '_MINUS_').replace('-', '_').replace(' > ', '_GREATER_THAN_').replace('>', 'GREATER_THAN').replace(' < ', '_LESS_THAN_').replace('<', 'LESS_THAN').replace(': ', '_COLON_').replace(':', '_COLON_').replace(', ', '_COMMA_').replace(',', '_COMMA_').replace('"', '_QUOTATION_').replace('.', '_DOT_').replace('?', '_QUESTION_').replace(' ', '_').replace('\n', '_NEWLINE_').replace('#', 'SHARP').upper()
+    return string.replace('_', '_UNDERLINE_').replace('==', '_EQUALS_').replace('!=', '_NOT_EQUALS_').replace(':=', '_ASSIGN_TO_').replace('=', '_EQUALS_').replace('+', '_PLUS_').replace('-', '_MINUS_').replace('>', '_GREATER_THAN_').replace('<', '_LESS_THAN_').replace(':', '_COLON_').replace(',', '_COMMA_').replace(';', '_SEMI_COLON_').replace('"', '_DOUBLE_QUOTES_').replace('.', '_DOT_').replace('?', '_QUESTION_').replace(' ', '_').replace('\n', '_NEWLINE_').replace('#', '_SHARP_').replace('*', '_ASTERISK_').replace('__', '_').replace('__', '_').upper()
 
 def load_model(prefix, filename):
     import xlrd
@@ -16,23 +16,23 @@ def load_model(prefix, filename):
     headers = wx.row(0)
     for i in range(1, len(headers)):
         cell = headers[i].value
-        events.append(prefix + "_" + normalize(str(cell)) + "_EVENT")
+        events.append((prefix + "_" + normalize(str(cell)) + "_EVENT").replace('__', '_'))
     slides = wx.col(0)
     for i in range(1, len(slides)):
         cell = slides[i].value
-        states.append(prefix + "_" + normalize(str(cell)) + "_STATE")
+        states.append((prefix + "_" + normalize(str(cell)) + "_STATE").replace('__', '_'))
     for i in range(1, wx.nrows):
         transformings.append([])
         for j in range(1, wx.ncols):
             cell = wx.cell(i, j).value
             if len(cell) > 0:
-                [action, state] = normalize(str(cell)).split("\\")
+                [action, state] = str(cell).split("\\")
                 if action:
-                    action = prefix + "_" + action + "_ACTION"
+                    action = (prefix + "_" + normalize(action) + "_ACTION").replace('__', '_')
                     actions[action] = 0
                 if state == "":
-                    state = normalize(str(wx.cell(i, 0).value))
-                transformings[i - 1].append((action, prefix + "_" + state + "_STATE"))
+                    state = str(wx.cell(i, 0).value)
+                transformings[i - 1].append((action, (prefix + "_" + normalize(state) + "_STATE").replace('__', '_')))
             else:
                 transformings[i - 1].append((None, None))
     return states, events, actions.keys(), transformings
@@ -76,14 +76,14 @@ def code_transforming(prefix, states, events, transformings, debug):
                 if action:
                     output += ' ' * 4 + 'case ' + states[j] + ': {\n'
                     if debug:
-                        output += ' ' * 6 + 'puts("(%s, %s) => (%s, %s)\\n");\n' % (events[i], states[j], action, state)
+                        output += ' ' * 6 + 'printf("(%s, %s) => (%s, %s)\\n");\n' % (events[i], states[j], action, state)
                     output += ' ' * 6 + '%s_do_action(%s, data);\n' % (prefix.lower(), action)
                     output += ' ' * 6 + 'return %s;\n' % state
                     output += ' ' * 4 + '}\n'
                 else:
                     if debug:
                         output += ' ' * 4 + 'case %s: {\n' % states[j]
-                        output += ' ' * 6 + 'puts("(%s, %s) => (N/A, %s)\\n");\n' % (events[i], states[j], state)
+                        output += ' ' * 6 + 'printf("(%s, %s) => (N/A, %s)\\n");\n' % (events[i], states[j], state)
                         output += ' ' * 6 + 'return %s;\n' % state
                         output += ' ' * 4 + '}\n'
                     else:
@@ -160,15 +160,15 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
     output += "};\n"
     output += "enum %s_STATE %s_transform_state(enum %s_STATE state, enum %s_EVENT event, void * data) {\n" % (prefix, prefix.lower(), prefix, prefix)
     if debug:
-        output += ' ' * 2 + 'puts("(");\n'
-        output += ' ' * 2 + 'puts(%s_event_strings[event]);\n' % prefix.lower()
-        output += ' ' * 2 + 'puts(", ");\n'
-        output += ' ' * 2 + 'puts(%s_state_strings[state]);\n' % prefix.lower()
-        output += ' ' * 2 + 'puts(") => (");\n'
-        output += ' ' * 2 + 'puts(%s_action_strings[%s_transform_actions[state][event]]);\n' % (prefix.lower(), prefix.lower())
-        output += ' ' * 2 + 'puts(", ");\n'
-        output += ' ' * 2 + 'puts(%s_state_strings[%s_transform_states[state][event]]);\n' % (prefix.lower(), prefix.lower())
-        output += ' ' * 2 + 'puts(")\\n");\n'
+        output += ' ' * 2 + 'printf("(");\n'
+        output += ' ' * 2 + 'printf(%s_event_strings[event]);\n' % prefix.lower()
+        output += ' ' * 2 + 'printf(", ");\n'
+        output += ' ' * 2 + 'printf(%s_state_strings[state]);\n' % prefix.lower()
+        output += ' ' * 2 + 'printf(") => (");\n'
+        output += ' ' * 2 + 'printf(%s_action_strings[%s_transform_actions[state][event]]);\n' % (prefix.lower(), prefix.lower())
+        output += ' ' * 2 + 'printf(", ");\n'
+        output += ' ' * 2 + 'printf(%s_state_strings[%s_transform_states[state][event]]);\n' % (prefix.lower(), prefix.lower())
+        output += ' ' * 2 + 'printf(")\\n");\n'
     output += ' ' * 2 + '%s_do_action(%s_transform_actions[state][event], data);\n' % (prefix.lower(), prefix.lower())
     output += ' ' * 2 + 'return %s_transform_states[state][event];\n' % (prefix.lower())
     output += "}\n"
@@ -216,4 +216,4 @@ if __name__ == '__main__':
     parser.add_argument("--debug", action='store_true', help="Output debug info in console")
     parser.add_argument("--style", default="code", help="The style of fsm: code(code directly) or table(table driven)")
     args = parser.parse_args()
-    main(args.src, normalize(args.prefix), args.directory, args.defination, args.implementation, args.debug, args.style)
+    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.defination, args.implementation, args.debug, args.style)
