@@ -1,7 +1,7 @@
 # finite-state-machine
 
 A simple finite state machine generator which genrate source code from
-Excel to C language.
+Excel or csv to C language.
 
 A typical finite state machine is consist of tuple(Action, Event,
 State). When an event occurred, the finite state machine should do the

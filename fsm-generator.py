@@ -5,7 +5,7 @@ def normalize(string):
     #    string = "number_" + string
     return string.replace('_', '_UNDERLINE_').replace('==', '_EQUALS_').replace('!=', '_NOT_EQUALS_').replace(':=', '_ASSIGN_TO_').replace('=', '_EQUALS_').replace('+', '_PLUS_').replace('-', '_MINUS_').replace('>', '_GREATER_THAN_').replace('<', '_LESS_THAN_').replace(':', '_COLON_').replace(',', '_COMMA_').replace(';', '_SEMI_COLON_').replace('"', '_DOUBLE_QUOTES_').replace('.', '_DOT_').replace('?', '_QUESTION_').replace(' ', '_').replace('\n', '_NEWLINE_').replace('#', '_SHARP_').replace('*', '_ASTERISK_').replace('__', '_').replace('__', '_').upper()
 
-def load_model(prefix, filename):
+def load_model_from_excel(prefix, filename):
     import xlrd
     states = []
     events = []
@@ -35,6 +35,38 @@ def load_model(prefix, filename):
                 transformings[i - 1].append((action, (prefix + "_" + normalize(state) + "_STATE").replace('__', '_')))
             else:
                 transformings[i - 1].append((None, None))
+    return states, events, actions.keys(), transformings
+
+def load_model_from_csv(prefix, filename):
+    import csv
+    states = []
+    events = []
+    actions = {}
+    transformings = []
+    with open(filename, 'r') as line:
+        reader = csv.reader(line, dialect='excel')
+        first = True
+        for row in reader:
+            if first:
+                first = False
+                headers = row[1:]
+                for event in headers:
+                    events.append((prefix + "_" + normalize(str(event)) + "_EVENT").replace('__', '_'))
+            else:
+                transformings.append([])
+                st = state = str(row[0])
+                states.append((prefix + "_" + normalize(state) + "_STATE").replace('__', '_'))
+                for cell in row[1:]:
+                    if len(cell) > 0:
+                        [action, state] = str(cell).split("\\")
+                        if action:
+                            action = (prefix + "_" + normalize(action) + "_ACTION").replace('__', '_')
+                            actions[action] = 0
+                        if state == "":
+                            state = st
+                        transformings[-1].append((action, (prefix + "_" + normalize(state) + "_STATE").replace('__', '_')))
+                    else:
+                        transformings[-1].append((None, None))
     return states, events, actions.keys(), transformings
 
 def state(prefix, states):
@@ -175,7 +207,10 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
     return output
 
 def main(src, prefix, directory, defination, implementation, debug, style):
-    (states, events, actions, transformings) = load_model(prefix, src)
+    if src.endswith("csv"):
+        (states, events, actions, transformings) = load_model_from_csv(prefix, src)
+    else:
+        (states, events, actions, transformings) = load_model_from_excel(prefix, src)
     import os.path
     if directory == None:
         directory = os.path.dirname(src)
@@ -208,7 +243,7 @@ if __name__ == '__main__':
     import argparse
     import sys
     parser = argparse.ArgumentParser()
-    parser.add_argument("src", help="The defination of state machine in xlsx")
+    parser.add_argument("src", help="The defination of state machine in xlsx or csv")
     parser.add_argument("-p", "--prefix", default="", help="The prefix of generated structures and functions")
     parser.add_argument("-d", "--directory", help="The directory of generated files")
     parser.add_argument("--defination", help="The filename of definations header")
