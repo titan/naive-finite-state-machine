@@ -215,10 +215,14 @@ def main(src, prefix, directory, defination, implementation, debug, style):
     if directory == None:
         directory = os.path.dirname(src)
     (root, ext) = os.path.splitext(os.path.basename(src))
-    header = root + ".h"
     if defination == None:
+        header = root + ".h"
         defination = os.path.join(directory, header)
+    else:
+        (root, ext) = os.path.splitext(os.path.basename(defination))
+        header = root + ".h"
     if implementation == None:
+        header = root + ".h"
         implementation = os.path.join(directory, root + ".c")
     with open(defination, 'w') as output:
         output.write(state(prefix, states))
