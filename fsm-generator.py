@@ -41,7 +41,39 @@ def cell_do_action(action, ctx):
 def normalize(string):
     #if len(string) > 0 and string[0].isdigit():
     #    string = "number_" + string
-    return string.replace('_', '_UNDERLINE_').replace('!=', '_NOT_EQUALS_').replace(':=', '_ASSIGN_TO_').replace('==', '_EQUALS_').replace('=', '_EQUALS_').replace('+', '_PLUS_').replace('-', '_MINUS_').replace('>', '_GREATER_THAN_').replace('<', '_LESS_THAN_').replace('(', '_OPEN_PARENTHESIS_').replace(')', '_CLOSE_PARENTHESIS_').replace('[', '_OPEN_BRACKET_').replace(']', '_CLOSE_BRACKET_').replace('{', '_OPEN_BRACE_').replace('}', '_CLOSE_BRACE_').replace(':', '_COLON_').replace(',', '_COMMA_').replace(';', '_SEMI_COLON_').replace('"', '_DOUBLE_QUOTES_').replace("'", '_QUOTES_').replace('.', '_DOT_').replace('?', '_QUESTION_').replace('%', '_PERCENT_').replace(' ', '_').replace('\n', '_NEWLINE_').replace('#', '_SHARP_').replace('*', '_ASTERISK_').replace('\\', '_BACKSLASH_').replace('__', '_').replace('__', '_').upper()
+    mappings = {}
+    mappings['_'] = '_UNDERLINE_'
+    mappings['!='] = '_NOT_EQUALS_'
+    mappings[':='] = '_ASSIGN_TO_'
+    mappings['=='] = '_EQUALS_'
+    mappings['='] = '_EQUALS_'
+    mappings['+'] = '_PLUS_'
+    mappings['-'] = '_MINUS_'
+    mappings['>'] = '_GREATER_THAN_'
+    mappings['<'] = '_LESS_THAN_'
+    mappings['('] = '_OPEN_PARENTHESIS_'
+    mappings[')'] = '_CLOSE_PARENTHESIS_'
+    mappings['['] = '_OPEN_BRACKET_'
+    mappings[']'] = '_CLOSE_BRACKET_'
+    mappings['{'] = '_OPEN_BRACE_'
+    mappings['}'] = '_CLOSE_BRACE_'
+    mappings[':'] = '_COLON_'
+    mappings[','] = '_COMMA_'
+    mappings[';'] = '_SEMI_COLON_'
+    mappings['"'] = '_DOUBLE_QUOTES_'
+    mappings["'"] = '_APOSTROPHE_'
+    mappings['.'] = '_DOT_'
+    mappings['?'] = '_QUESTION_'
+    mappings['%'] = '_PERCENT_'
+    mappings[' '] = '_'
+    mappings['\n'] = '_NEWLINE_'
+    mappings['#'] = '_SHARP_'
+    mappings['*'] = '_ASTERISK_'
+    mappings['\\'] = '_BACKSLASH_'
+    mappings['|'] = '_PIPE_'
+    for (k, v) in mappings.items():
+        string = string.replace(k, v)
+    return string.replace(' ', '_').replace('__', '_').replace('__', '_').upper()
 
 def load_model_from_excel(filename):
     import xlrd
