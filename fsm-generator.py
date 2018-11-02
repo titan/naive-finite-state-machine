@@ -1,43 +1,5 @@
 #! /usr/bin/python3
 
-class ParsingContext:
-    def __init__(self):
-        self.buf = ""
-        self.tmp = ""
-        self.ch = None
-        self.action = None
-        self.state = None
-
-def cell_do_action(action, ctx):
-    import cell_fsm
-    if action == cell_fsm.Action.APPEND_TMP:
-        ctx.tmp += ctx.ch
-    elif action == cell_fsm.Action.APPEND:
-        ctx.buf += ctx.ch
-    elif action == cell_fsm.Action.COMBINE_TMP_COMMA_APPEND:
-        ctx.buf += ctx.tmp
-        ctx.tmp = ""
-        ctx.buf += ctx.ch
-    elif action == cell_fsm.Action.COMBINE_TMP_COMMA_ACTION:
-        ctx.buf += ctx.tmp
-        ctx.tmp = ""
-        ctx.action = ctx.buf
-        ctx.buf = ""
-    elif action == cell_fsm.Action.ACTION:
-        ctx.action = ctx.buf
-        ctx.buf = ""
-    elif action == cell_fsm.Action.STATE:
-        ctx.state = ctx.buf
-        ctx.buf = ""
-    elif action == cell_fsm.Action.STATE_ERROR:
-        ctx.buf += ctx.ch
-        print("Invalid state: %s" % ctx.buf)
-        exit(-1)
-    elif action == cell_fsm.Action.COMMENT_ERROR:
-        ctx.buf += ctx.ch
-        print("Invalid comment: %s" % ctx.buf)
-        exit(-1)
-
 def normalize(string):
     #if len(string) > 0 and string[0].isdigit():
     #    string = "number_" + string
@@ -77,111 +39,191 @@ def normalize(string):
 
 def load_model_from_excel(filename):
     import xlrd
-    import cell_fsm
+    model = []
+    wb = xlrd.open_workbook(filename)
+    wx = wb.sheet_by_index(0)
+    for i in range(0, wx.nrows):
+        row = []
+        for j in range(0, wx.ncols):
+            row.append(wx.cell(i, j).value)
+        model.append(row)
+    return model
+
+def load_model_from_csv(filename):
+    import csv
+    model = []
+    with open(filename, 'r') as line:
+        reader = csv.reader(line, dialect='excel')
+        for row in reader:
+            line = []
+            for col in row:
+                line.append(col)
+            model.append(line)
+    return model
+
+class TableContext:
+    def __init__(self):
+        self.buf = ""
+        self.tmp = ""
+        self.ch = None
+        self.line = 1
+        self.col = 1
+        self.cells = []
+        self.lines = []
+        self.rows = []
+
+def table_do_action(action, ctx):
+    from table_fsm import Action
+    if action == Action.ERROR:
+        print("Invalid table format at col %d in line %d" % (ctx.col, ctx.line))
+        exit(-1)
+    elif action == Action.APPEND:
+        ctx.buf += ctx.ch
+    elif action == Action.CELL:
+        ctx.cells.append(ctx.buf.strip())
+        ctx.buf = ''
+    elif action == Action.LINE:
+        ctx.lines.append(ctx.cells)
+        ctx.cells = []
+    elif action == Action.ROW:
+        cells = []
+        for i in range(len(ctx.lines[0])):
+            cells.append([])
+        for row in range(len(ctx.lines)):
+            for col in range(len(ctx.lines[row])):
+                if len(ctx.lines[row][col]) > 0:
+                    cells[col].append(ctx.lines[row][col])
+        row = []
+        for c in cells:
+            row.append('\n'.join(c))
+        ctx.rows.append(row)
+        ctx.lines = []
+
+def load_model_from_table(src):
+    from table_fsm import Event, FSM
+    ctx = TableContext()
+    fsm = FSM(table_do_action)
+    with open(src, 'r') as input:
+        content = input.read(-1)
+        for ch in content:
+            ctx.ch = ch
+            if ch == '\n':
+                ctx.line += 1
+                ctx.col = 1
+                fsm.process(Event.LF, ctx)
+            elif ch == '+':
+                fsm.process(Event.PLUS, ctx)
+                ctx.col += 1
+            elif ch == '-':
+                fsm.process(Event.MINUS, ctx)
+                ctx.col += 1
+            elif ch == '|':
+                fsm.process(Event.PIPE, ctx)
+                ctx.col += 1
+            else:
+                fsm.process(Event.OTHERS, ctx)
+                ctx.col += 1
+    return ctx.rows
+
+class CellContext:
+    def __init__(self):
+        self.buf = ""
+        self.tmp = ""
+        self.ch = None
+        self.action = None
+        self.state = None
+
+def cell_do_action(action, ctx):
+    from cell_fsm import Action
+    if action == Action.APPEND_TMP:
+        ctx.tmp += ctx.ch
+    elif action == Action.APPEND:
+        ctx.buf += ctx.ch
+    elif action == Action.COMBINE_TMP_COMMA_APPEND:
+        ctx.buf += ctx.tmp
+        ctx.tmp = ""
+        ctx.buf += ctx.ch
+    elif action == Action.COMBINE_TMP_COMMA_ACTION:
+        ctx.buf += ctx.tmp
+        ctx.tmp = ""
+        ctx.action = ctx.buf
+        ctx.buf = ""
+    elif action == Action.ACTION:
+        ctx.action = ctx.buf
+        ctx.buf = ""
+    elif action == Action.STATE:
+        ctx.state = ctx.buf
+        ctx.buf = ""
+    elif action == Action.STATE_ERROR:
+        ctx.buf += ctx.ch
+        print("Invalid state: %s" % ctx.buf)
+        exit(-1)
+    elif action == Action.COMMENT_ERROR:
+        ctx.buf += ctx.ch
+        print("Invalid comment: %s" % ctx.buf)
+        exit(-1)
+
+def extract_model(model):
+    from cell_fsm import Event, FSM
     states = []
     events = []
     actions = {}
-    wb = xlrd.open_workbook(filename)
-    wx = wb.sheet_by_index(0)
     transformings = []
-    headers = wx.row(0)
+    headers = model[0]
     for i in range(1, len(headers)):
-        cell = headers[i].value
+        cell = headers[i]
         events.append(normalize(str(cell)).replace('__', '_'))
-    slides = wx.col(0)
-    for i in range(1, len(slides)):
-        cell = slides[i].value
+    for i in range(1, len(model)):
+        cell = model[i][0]
         states.append(normalize(str(cell)).replace('__', '_'))
-    for i in range(1, wx.nrows):
+    for i in range(1, len(model)):
         transformings.append([])
-        for j in range(1, wx.ncols):
-            cell = wx.cell(i, j).value
+        for j in range(1, len(model[i])):
+            cell = model[i][j]
             if len(cell) > 0:
-                ctx = ParsingContext()
-                fsm = cell_fsm.FSM(cell_do_action)
+                ctx = CellContext()
+                fsm = FSM(cell_do_action)
                 for ch in str(cell):
                     ctx.ch = ch
                     if ch == '\n':
-                        fsm.process(cell_fsm.Event.LF, ctx)
+                        fsm.process(Event.LF, ctx)
                     elif ch == '-':
-                        fsm.process(cell_fsm.Event.MINUS, ctx)
+                        fsm.process(Event.MINUS, ctx)
                     elif ch == '=':
-                        fsm.process(cell_fsm.Event.EQUALS, ctx)
+                        fsm.process(Event.EQUALS, ctx)
                     elif ch == '\\':
-                        fsm.process(cell_fsm.Event.BACKSLASH, ctx)
+                        fsm.process(Event.BACKSLASH, ctx)
                     elif ch == '(':
-                        fsm.process(cell_fsm.Event.OPEN_PARENTHESIS, ctx)
+                        fsm.process(Event.OPEN_PARENTHESIS, ctx)
                     elif ch == ')':
-                        fsm.process(cell_fsm.Event.CLOSE_PARENTHESIS, ctx)
+                        fsm.process(Event.CLOSE_PARENTHESIS, ctx)
                     else:
-                        fsm.process(cell_fsm.Event.OTHERS, ctx)
-                fsm.process(cell_fsm.Event.EOI, ctx)
+                        fsm.process(Event.OTHERS, ctx)
+                fsm.process(Event.EOI, ctx)
                 if ctx.action:
                     ctx.action = normalize(ctx.action).replace('__', '_')
                     actions[ctx.action] = 0
                 if not ctx.state or ctx.state == "":
-                    ctx.state = str(wx.cell(i, 0).value)
+                    ctx.state = str(model[i][0])
                 transformings[i - 1].append((ctx.action, normalize(ctx.state).replace('__', '_')))
             else:
                 transformings[i - 1].append((None, None))
     return states, events, actions.keys(), transformings
 
-def load_model_from_csv(filename):
-    import csv
-    import cell_fsm
-    states = []
-    events = []
-    actions = {}
-    transformings = []
-    with open(filename, 'r') as line:
-        reader = csv.reader(line, dialect='excel')
-        first = True
-        for row in reader:
-            if first:
-                first = False
-                headers = row[1:]
-                for event in headers:
-                    events.append(normalize(str(event)).replace('__', '_'))
-            else:
-                transformings.append([])
-                st = state = str(row[0])
-                states.append(normalize(state).replace('__', '_'))
-                for cell in row[1:]:
-                    if len(cell) > 0:
-                        ctx = ParsingContext()
-                        fsm = cell_fsm.FSM(cell_do_action)
-                        for ch in str(cell):
-                            ctx.ch = ch
-                            if ch == '\n':
-                                fsm.process(cell_fsm.Event.LF, ctx)
-                            elif ch == '-':
-                                fsm.process(cell_fsm.Event.MINUS, ctx)
-                            elif ch == '=':
-                                fsm.process(cell_fsm.Event.EQUALS, ctx)
-                            elif ch == '\\':
-                                fsm.process(cell_fsm.Event.BACKSLASH, ctx)
-                            elif ch == '(':
-                                fsm.process(cell_fsm.Event.OPEN_PARENTHESIS, ctx)
-                            elif ch == ')':
-                                fsm.process(cell_fsm.Event.CLOSE_PARENTHESIS, ctx)
-                            else:
-                                fsm.process(cell_fsm.Event.OTHERS, ctx)
-                        fsm.process(cell_fsm.Event.EOI, ctx)
-                        if ctx.action:
-                            ctx.action = normalize(ctx.action).replace('__', '_')
-                            actions[ctx.action] = 0
-                        if not ctx.state or ctx.state == "":
-                            ctx.state = st
-                        transformings[-1].append((ctx.action, normalize(ctx.state).replace('__', '_')))
-                    else:
-                        transformings[-1].append((None, None))
-    return states, events, actions.keys(), transformings
-
 def main(src, prefix, directory, defination, implementation, debug, style, target):
+    model = None
     if src.endswith("csv"):
-        (states, events, actions, transformings) = load_model_from_csv(src)
+        model = load_model_from_csv(src)
+    elif src.endswith("xls"):
+        model = load_model_from_excel(src)
+    elif src.endswith("xlsx"):
+        model = load_model_from_excel(src)
     else:
-        (states, events, actions, transformings) = load_model_from_excel(src)
+        model = load_model_from_table(src)
+    if model == None:
+        print("Cannot load model from %s" % src)
+        exit(-1)
+    (states, events, actions, transformings) = extract_model(model)
     if target == "c":
         import c
         c.process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings)
