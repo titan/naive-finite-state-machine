@@ -81,7 +81,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
     if debug:
         output += " " * 8 + "self.state_strings = [%s]\n" % (", ".join(["\"%s\"" % state for state in states ]))
         output += " " * 8 + "self.event_strings = [%s]\n" % (", ".join(["\"%s\"" % event for event in events ]))
-        output += " " * 8 + "self.action_strings = [%s]\n" % (", ".join(["\"%s\"" % action for action in actions]))
+        output += " " * 8 + "self.action_strings = [\"N/A\", %s]\n" % (", ".join(["\"%s\"" % action for action in actions]))
     transforming_states_table = []
     for si in range(len(states)):
         transforming_states = []
