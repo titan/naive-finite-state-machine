@@ -48,9 +48,11 @@ def code_transforming(prefix, states, events, transformings, debug):
             output += " " * 8 + "elif event == Event.%s:\n" % e
         first_state = True
         si = 0
+        stmt = 0
         for s in states:
             (action, state) = transformings[si][ei]
             if state:
+                stmt += 1
                 state = preprocess(state)
                 if first_state:
                     first_state = False
@@ -68,6 +70,8 @@ def code_transforming(prefix, states, events, transformings, debug):
                         output += " " * 16 + 'print("(%s, %s) => (N/A, %s)")\n' % (events[ei], states[si], state)
                 output += " " * 16 + "self.state = State.%s\n" % state
             si += 1
+        if stmt == 0:
+            output += " " * 12 + "pass\n"
         ei += 1
     return output
 
