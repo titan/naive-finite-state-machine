@@ -33,6 +33,8 @@ def normalize(string):
     mappings['*'] = '_ASTERISK_'
     mappings['\\'] = '_BACKSLASH_'
     mappings['|'] = '_PIPE_'
+    mappings['!'] = '_EXCLAM_'
+    mappings['/'] = '_SLASH_'
     for (k, v) in mappings.items():
         string = string.replace(k, v)
     return string.replace(' ', '_').replace('__', '_').replace('__', '_').upper()
