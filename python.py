@@ -31,13 +31,29 @@ def action(prefix, actions):
         i += 1
     return output
 
-
-def code_transforming(prefix, states, events, transformings, debug):
-    output = "class FSM:\n"
-    output += " " * 4 + "def __init__(self, action_handler = None):\n"
-    output += " " * 8 + "self.handler = action_handler\n"
-    output += " " * 8 + "self.state = State.%s\n" % states[0]
-    output += " " * 4 + "def process(self, event, data = None):\n"
+def code_transforming(prefix, states, events, transformings, debug, function):
+    output = "class StateMachine:\n"
+    if not function:
+        output += " " * 4 + "def __init__(self, delegate):\n"
+        output += " " * 8 + "self.delegate = delegate\n"
+        output += " " * 8 + "self.state = State.%s\n" % states[0]
+        output += " " * 4 + "def process(self, event, data = None):\n"
+    else:
+        actions = {}
+        for si in range(len(states)):
+            for ei in range(len(events)):
+                (action, state) = transformings[si][ei]
+                if action:
+                    realaction = preprocess(action).lower()
+                    actions[realaction] = 1
+        for action in actions.keys():
+            output += " " * 4 + "def %s(self, ctx, state = 0, event = 0): \n" % (action)
+            output += " " * 8 + "pass\n"
+        output += " " * 4 + "def __init__(self, delegate):\n"
+        for action in actions.keys():
+            output += " " * 8 + "self.%s = delegate.%s\n" % (action, action)
+        output += " " * 8 + "self.state = State.%s\n" % states[0]
+        output += " " * 4 + "def process(self, ctx, event):\n"
     first_event = True
     ei = 0
     for e in events:
@@ -61,10 +77,13 @@ def code_transforming(prefix, states, events, transformings, debug):
                     output += " " * 12 + "elif self.state == State.%s:\n" % preprocess(s)
                 if action:
                     action = preprocess(action)
-                    output += " " * 16 + "if self.handler:\n"
-                    output += " " * 20 + "self.handler(Action.%s, data)\n" % action
                     if debug:
                         output += " " * 16 + 'print("(%s, %s) => (%s, %s)")\n' % (events[ei], states[si], action, state)
+                    if function:
+                        output += " " * 16 + "self.%s(ctx, self.state, event)\n" % action.lower()
+                    else:
+                        output += " " * 16 + "if self.delegate:\n"
+                        output += " " * 20 + "self.delegate(Action.%s, data)\n" % action
                 else:
                     if debug:
                         output += " " * 16 + 'print("(%s, %s) => (N/A, %s)")\n' % (events[ei], states[si], state)
@@ -75,13 +94,42 @@ def code_transforming(prefix, states, events, transformings, debug):
         ei += 1
     return output
 
-def table_transforming(prefix, states, events, actions, transformings, debug):
-    output = "class FSM:\n"
-    output += " " * 4 + "def __init__(self, action_handler = None):\n"
+def table_transforming(prefix, states, events, actions, transformings, debug, function):
+    output = "class StateMachine:\n"
+    if not function:
+        output += " " * 4 + "def __init__(self, delegate):\n"
+        output += " " * 8 + "self.delegate = delegate\n"
+    else:
+        actions = {}
+        for si in range(len(states)):
+            for ei in range(len(events)):
+                (action, state) = transformings[si][ei]
+                if action:
+                    realaction = preprocess(action).lower()
+                    actions[realaction] = 1
+        for action in actions.keys():
+            output += " " * 4 + "def %s(self, ctx, state = 0, event = 0): \n" % (action)
+            output += " " * 8 + "pass\n"
+        output += " " * 4 + "def __init__(self, delegate):\n"
+        for action in actions.keys():
+            output += " " * 8 + "self.%s = delegate.%s\n" % (action, action)
     if debug:
-        output += " " * 8 + "self.state_strings = [%s]\n" % (", ".join(["\"%s\"" % state for state in states ]))
-        output += " " * 8 + "self.event_strings = [%s]\n" % (", ".join(["\"%s\"" % event for event in events ]))
-        output += " " * 8 + "self.action_strings = [\"N/A\", %s]\n" % (", ".join(["\"%s\"" % action for action in actions]))
+        output += " " * 8 + "self.state_strings = [%s]\n" % (", ".join(["\"%s\"" % state for state in states]))
+        output += " " * 8 + "self.event_strings = [%s]\n" % (", ".join(["\"%s\"" % event for event in events]))
+        if not function:
+            output += " " * 8 + "self.action_strings = [\"N/A\", %s]\n" % (", ".join(["\"%s\"" % action for action in actions]))
+        else:
+            actions_table = []
+            for si in range(len(states)):
+                actions = []
+                for ei in range(len(events)):
+                    (action, state) = transformings[si][ei]
+                    if action:
+                        actions.append('"%s"' % preprocess(action))
+                    else:
+                        actions.append('"N/A"')
+                actions_table.append("[%s]" % ", ".join(actions))
+            output += " " * 8 + "self.action_strings = [%s]\n" % (", ".join(actions_table))
     transforming_states_table = []
     for si in range(len(states)):
         transforming_states = []
@@ -98,23 +146,35 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
         transforming_actions = []
         for ei in range(len(events)):
             (action, state) = transformings[si][ei]
-            if action:
-                transforming_actions.append("Action." + preprocess(action))
+            if function:
+                if action:
+                    transforming_actions.append("self." + preprocess(action).lower())
+                else:
+                    transforming_actions.append("None")
             else:
-                transforming_actions.append("0")
+                if action:
+                    transforming_actions.append("Action." + preprocess(action))
+                else:
+                    transforming_actions.append("0")
         transforming_actions_table.append("[%s]" % ", ".join(transforming_actions))
     output += " " * 8 + "self.transform_actions = [%s]\n" % (", ".join(transforming_actions_table))
-    output += " " * 8 + "self.handler = action_handler\n"
     output += " " * 8 + "self.state = State.%s\n" % states[0]
-    output += " " * 4 + "def process(self, event, data = None):\n"
-    if debug:
-        output += " " * 8 + 'print("(%s, %s) => (%s, %s)" % (self.event_strings[event], self.state_strings[self.state], self.action_strings[self.transform_actions[self.state][event]], self.state_strings[self.transform_states[self.state][event]]))\n';
-    output += " " * 8 + "if self.handler:\n"
-    output += " " * 12 + "self.handler(self.transform_actions[self.state][event], data)\n"
+    if not function:
+        output += " " * 4 + "def process(self, event, data):\n"
+        if debug:
+            output += " " * 8 + 'print("(%s, %s) => (%s, %s)" % (self.event_strings[event], self.state_strings[self.state], self.action_strings[self.transform_states[self.state][event]], self.state_strings[self.transform_states[self.state][event]]))\n';
+        output += " " * 8 + "if self.delegate:\n"
+        output += " " * 12 + "self.delegate(self.transform_actions[self.state][event], data)\n"
+    else:
+        output += " " * 4 + "def process(self, ctx, event):\n"
+        if debug:
+            output += " " * 8 + 'print("(%s, %s) => (%s, %s)" % (self.event_strings[event], self.state_strings[self.state], self.action_strings[self.state][event], self.state_strings[self.transform_states[self.state][event]]))\n';
+        output += " " * 8 + "if self.transform_actions[self.state][event]:\n"
+        output += " " * 12 + "self.transform_actions[self.state][event](ctx, self.state, event)\n"
     output += " " * 8 + "self.state = self.transform_states[self.state][event]\n"
     return output
 
-def process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings):
+def process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings, function):
     import os.path
     states = [preprocess(state) for state in states]
     events = [preprocess(event) for event in events]
@@ -128,10 +188,11 @@ def process(src, prefix, directory, defination, implementation, debug, style, st
         output.write("\n");
         output.write(event(prefix, events))
         output.write("\n");
-        output.write(action(prefix, actions))
-        output.write("\n");
+        if not function:
+            output.write(action(prefix, actions))
+            output.write("\n");
         if style == "code":
-            output.write(code_transforming(prefix, states, events, transformings, debug))
+            output.write(code_transforming(prefix, states, events, transformings, debug, function))
         else:
-            output.write(table_transforming(prefix, states, events, actions, transformings, debug))
+            output.write(table_transforming(prefix, states, events, actions, transformings, debug, function))
         output.write("\n");
