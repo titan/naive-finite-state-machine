@@ -135,38 +135,37 @@ class CellContext:
         self.action = None
         self.state = None
 
-def cell_do_action(action, ctx):
-    from cell_fsm import Action
-    if action == Action.APPEND_TMP:
+class CellDelegate:
+    def append_tmp(self, ctx, state = 0, event = 0):
         ctx.tmp += ctx.ch
-    elif action == Action.APPEND:
-        ctx.buf += ctx.ch
-    elif action == Action.COMBINE_TMP_COMMA_APPEND:
-        ctx.buf += ctx.tmp
-        ctx.tmp = ""
-        ctx.buf += ctx.ch
-    elif action == Action.COMBINE_TMP_COMMA_ACTION:
-        ctx.buf += ctx.tmp
-        ctx.tmp = ""
-        ctx.action = ctx.buf
-        ctx.buf = ""
-    elif action == Action.ACTION:
-        ctx.action = ctx.buf
-        ctx.buf = ""
-    elif action == Action.STATE:
-        ctx.state = ctx.buf
-        ctx.buf = ""
-    elif action == Action.STATE_ERROR:
-        ctx.buf += ctx.ch
-        print("Invalid state: %s" % ctx.buf)
-        exit(-1)
-    elif action == Action.COMMENT_ERROR:
+    def comment_error(self, ctx, state = 0, event = 0):
         ctx.buf += ctx.ch
         print("Invalid comment: %s" % ctx.buf)
         exit(-1)
+    def append(self, ctx, state = 0, event = 0):
+        ctx.buf += ctx.ch
+    def combine_tmp_comma_append(self, ctx, state = 0, event = 0):
+        ctx.buf += ctx.tmp
+        ctx.tmp = ""
+        ctx.buf += ctx.ch
+    def combine_tmp_comma_action(self, ctx, state = 0, event = 0):
+        ctx.buf += ctx.tmp
+        ctx.tmp = ""
+        ctx.action = ctx.buf
+        ctx.buf = ""
+    def action(self, ctx, state = 0, event = 0):
+        ctx.action = ctx.buf
+        ctx.buf = ""
+    def state_error(self, ctx, state = 0, event = 0):
+        ctx.buf += ctx.ch
+        print("Invalid state: %s" % ctx.buf)
+        exit(-1)
+    def state(self, ctx, state = 0, event = 0):
+        ctx.state = ctx.buf
+        ctx.buf = ""
 
 def extract_model(model):
-    from cell_fsm import Event, FSM
+    from cell_fsm import Event, StateMachine
     states = []
     events = []
     actions = {}
@@ -184,24 +183,22 @@ def extract_model(model):
             cell = model[i][j]
             if len(cell) > 0:
                 ctx = CellContext()
-                fsm = FSM(cell_do_action)
+                fsm = StateMachine(CellDelegate())
                 for ch in str(cell):
                     ctx.ch = ch
                     if ch == '\n':
-                        fsm.process(Event.LF, ctx)
+                        fsm.process(ctx, Event.LF)
                     elif ch == '-':
-                        fsm.process(Event.MINUS, ctx)
-                    elif ch == '=':
-                        fsm.process(Event.EQUALS, ctx)
+                        fsm.process(ctx, Event.MINUS)
                     elif ch == '\\':
-                        fsm.process(Event.BACKSLASH, ctx)
+                        fsm.process(ctx, Event.BACKSLASH)
                     elif ch == '(':
-                        fsm.process(Event.OPEN_PARENTHESIS, ctx)
+                        fsm.process(ctx, Event.OPEN_PARENTHESIS)
                     elif ch == ')':
-                        fsm.process(Event.CLOSE_PARENTHESIS, ctx)
+                        fsm.process(ctx, Event.CLOSE_PARENTHESIS)
                     else:
-                        fsm.process(Event.OTHERS, ctx)
-                fsm.process(Event.EOI, ctx)
+                        fsm.process(ctx, Event.OTHERS)
+                fsm.process(ctx, Event.EOI)
                 if ctx.action:
                     ctx.action = normalize(ctx.action).replace('__', '_')
                     actions[ctx.action] = 0

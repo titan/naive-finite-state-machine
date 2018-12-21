@@ -47,7 +47,7 @@ def code_transforming(prefix, states, events, transformings, debug, function):
                     realaction = preprocess(action).lower()
                     actions[realaction] = 1
         for action in actions.keys():
-            output += " " * 4 + "def %s(self, ctx, state = 0, event = 0): \n" % (action)
+            output += " " * 4 + "def %s(self, ctx, state = 0, event = 0):\n" % (action)
             output += " " * 8 + "pass\n"
         output += " " * 4 + "def __init__(self, delegate):\n"
         for action in actions.keys():
@@ -108,7 +108,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
                     realaction = preprocess(action).lower()
                     actions[realaction] = 1
         for action in actions.keys():
-            output += " " * 4 + "def %s(self, ctx, state = 0, event = 0): \n" % (action)
+            output += " " * 4 + "def %s(self, ctx, state = 0, event = 0):\n" % (action)
             output += " " * 8 + "pass\n"
         output += " " * 4 + "def __init__(self, delegate):\n"
         for action in actions.keys():
