@@ -236,6 +236,7 @@ def main(src, prefix, directory, defination, implementation, debug, style, targe
 if __name__ == '__main__':
     import argparse
     import sys
+    from os.path import basename
     parser = argparse.ArgumentParser()
     parser.add_argument("src", help="The defination of state machine in xlsx or csv")
     parser.add_argument("-p", "--prefix", default="", help="The prefix of generated structures and functions")
@@ -243,8 +244,7 @@ if __name__ == '__main__':
     parser.add_argument("--defination", help="The filename of definations header")
     parser.add_argument("--implementation", help="The filename of implementation")
     parser.add_argument("--debug", action='store_true', help="Output debug info in console")
-    parser.add_argument("--action-as-function", action='store_true', dest='function', help="Make action be a function")
     parser.add_argument("--style", default="code", help="The style of fsm: code(code directly) or table(table driven)")
     parser.add_argument("--target", default="c", help="The target language of fsm: c or python")
     args = parser.parse_args()
-    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.defination, args.implementation, args.debug, args.style, args.target, args.function)
+    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.defination, args.implementation, args.debug, args.style, args.target, True if basename(sys.argv[0]) == 'naive-fsm-generator.py' else False)

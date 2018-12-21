@@ -198,7 +198,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
         output += "}\n"
     else:
         actions = {}
-        tmp = "static state_machine_action %s_transform_actions[%d][%d] = {\n" % (prefix.lower(), len(states), len(events))
+        tmp = "static state_machine_action_fn %s_transform_actions[%d][%d] = {\n" % (prefix.lower(), len(states), len(events))
         for si in range(len(states)):
             tmp += ' ' * 2 + '{'
             for ei in range(len(events)):
@@ -269,7 +269,7 @@ def process(src, prefix, directory, defination, implementation, debug, style, st
             output.write(' ' * 2 + "enum %s_STATE state;\n" % (prefix));
             output.write(' ' * 2 + "struct %s_context_t * ctx;\n" % (prefix.lower()));
             output.write("};\n");
-            output.write("typedef void (* state_machine_action)(struct %s_context_t * ctx, enum %s_STATE state, enum %s_EVENT event);\n" % (prefix.lower(), prefix, prefix));
+            output.write("typedef void (* state_machine_action_fn)(struct %s_context_t * ctx, enum %s_STATE state, enum %s_EVENT event);\n" % (prefix.lower(), prefix, prefix));
             output.write("void %s_init_state_machine(struct %s_state_machine_t * fsm, struct %s_context_t * ctx);\n" % (prefix.lower(), prefix.lower(), prefix.lower()))
             output.write("void %s_process(struct %s_state_machine_t * fsm, enum %s_EVENT event);\n" % (prefix.lower(), prefix.lower(), prefix))
     with open(implementation, 'w') as output:
