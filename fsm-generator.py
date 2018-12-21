@@ -212,7 +212,7 @@ def extract_model(model):
                 transformings[i - 1].append((None, None))
     return states, events, actions.keys(), transformings
 
-def main(src, prefix, directory, defination, implementation, debug, style, target):
+def main(src, prefix, directory, defination, implementation, debug, style, target, function):
     model = None
     if src.endswith("csv"):
         model = load_model_from_csv(src)
@@ -228,10 +228,10 @@ def main(src, prefix, directory, defination, implementation, debug, style, targe
     (states, events, actions, transformings) = extract_model(model)
     if target == "c":
         import c
-        c.process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings)
+        c.process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings, function)
     elif target == "python":
         import python
-        python.process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings)
+        python.process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings, function)
 
 if __name__ == '__main__':
     import argparse
@@ -243,7 +243,8 @@ if __name__ == '__main__':
     parser.add_argument("--defination", help="The filename of definations header")
     parser.add_argument("--implementation", help="The filename of implementation")
     parser.add_argument("--debug", action='store_true', help="Output debug info in console")
+    parser.add_argument("--action-as-function", action='store_true', dest='function', help="Make action be a function")
     parser.add_argument("--style", default="code", help="The style of fsm: code(code directly) or table(table driven)")
     parser.add_argument("--target", default="c", help="The target language of fsm: c or python")
     args = parser.parse_args()
-    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.defination, args.implementation, args.debug, args.style, args.target)
+    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.defination, args.implementation, args.debug, args.style, args.target, args.function)
