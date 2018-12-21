@@ -74,20 +74,19 @@ class TableContext:
         self.lines = []
         self.rows = []
 
-def table_do_action(action, ctx):
-    from table_fsm import Action
-    if action == Action.ERROR:
+class TableDelegate:
+    def error(self, ctx, state = 0, event = 0):
         print("Invalid table format at col %d in line %d" % (ctx.col, ctx.line))
         exit(-1)
-    elif action == Action.APPEND:
+    def append(self, ctx, state = 0, event = 0):
         ctx.buf += ctx.ch
-    elif action == Action.CELL:
+    def cell(self, ctx, state = 0, event = 0):
         ctx.cells.append(ctx.buf.strip())
         ctx.buf = ''
-    elif action == Action.LINE:
+    def line(self, ctx, state = 0, event = 0):
         ctx.lines.append(ctx.cells)
         ctx.cells = []
-    elif action == Action.ROW:
+    def row(self, ctx, state = 0, event = 0):
         cells = []
         for i in range(len(ctx.lines[0])):
             cells.append([])
@@ -102,9 +101,9 @@ def table_do_action(action, ctx):
         ctx.lines = []
 
 def load_model_from_table(src):
-    from table_fsm import Event, FSM
+    from table_fsm import Event, StateMachine
     ctx = TableContext()
-    fsm = FSM(table_do_action)
+    fsm = StateMachine(TableDelegate())
     with open(src, 'r') as input:
         content = input.read(-1)
         for ch in content:
@@ -112,18 +111,18 @@ def load_model_from_table(src):
             if ch == '\n':
                 ctx.line += 1
                 ctx.col = 1
-                fsm.process(Event.LF, ctx)
+                fsm.process(ctx, Event.LF)
             elif ch == '+':
-                fsm.process(Event.PLUS, ctx)
+                fsm.process(ctx, Event.PLUS)
                 ctx.col += 1
             elif ch == '-':
-                fsm.process(Event.MINUS, ctx)
+                fsm.process(ctx, Event.MINUS)
                 ctx.col += 1
             elif ch == '|':
-                fsm.process(Event.PIPE, ctx)
+                fsm.process(ctx, Event.PIPE)
                 ctx.col += 1
             else:
-                fsm.process(Event.OTHERS, ctx)
+                fsm.process(ctx, Event.OTHERS)
                 ctx.col += 1
     return ctx.rows
 

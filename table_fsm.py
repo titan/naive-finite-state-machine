@@ -11,21 +11,28 @@ class Event:
     OTHERS = 3
     LF = 4
 
-class Action:
-    ERROR = 1
-    APPEND = 2
-    CELL = 3
-    LINE = 4
-    ROW = 5
-
-class FSM:
-    def __init__(self, action_handler = None):
+class StateMachine:
+    def error(self, ctx, state = 0, event = 0):
+        pass
+    def append(self, ctx, state = 0, event = 0):
+        pass
+    def cell(self, ctx, state = 0, event = 0):
+        pass
+    def line(self, ctx, state = 0, event = 0):
+        pass
+    def row(self, ctx, state = 0, event = 0):
+        pass
+    def __init__(self, delegate):
+        self.error = delegate.error
+        self.append = delegate.append
+        self.cell = delegate.cell
+        self.line = delegate.line
+        self.row = delegate.row
         self.transform_states = [[State.ROW_SPLITOR, State.READY, State.ROW_LINE, State.READY, State.READY], [State.ROW_SPLITOR, State.ROW_SPLITOR, State.ROW_SPLITOR, State.ROW_SPLITOR, State.READY], [State.ROW_LINE, State.ROW_LINE, State.ROW_LINE, State.ROW_LINE, State.ROW_LINE_LF], [State.ROW_SPLITOR, State.ROW_LINE_LF, State.ROW_LINE, State.ROW_LINE_LF, State.ROW_LINE_LF]]
-        self.transform_actions = [[0, Action.ERROR, 0, Action.ERROR, 0], [0, 0, Action.ERROR, Action.ERROR, 0], [Action.APPEND, Action.APPEND, Action.CELL, Action.APPEND, Action.LINE], [Action.ROW, Action.ERROR, 0, Action.ERROR, 0]]
-        self.handler = action_handler
+        self.transform_actions = [[None, self.error, None, self.error, None], [None, None, self.error, self.error, None], [self.append, self.append, self.cell, self.append, self.line], [self.row, self.error, None, self.error, None]]
         self.state = State.READY
-    def process(self, event, data = None):
-        if self.handler:
-            self.handler(self.transform_actions[self.state][event], data)
+    def process(self, ctx, event):
+        if self.transform_actions[self.state][event]:
+            self.transform_actions[self.state][event](ctx, self.state, event)
         self.state = self.transform_states[self.state][event]
 
