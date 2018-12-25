@@ -228,6 +228,9 @@ def main(src, prefix, directory, defination, implementation, debug, style, targe
     elif target == "python":
         import python
         python.process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings, function)
+    elif target == 'dart':
+        import dart
+        dart.process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings, function)
 
 if __name__ == '__main__':
     import argparse
@@ -240,7 +243,7 @@ if __name__ == '__main__':
     parser.add_argument("--defination", help="The filename of definations header")
     parser.add_argument("--implementation", help="The filename of implementation")
     parser.add_argument("--debug", action='store_true', help="Output debug info in console")
-    parser.add_argument("--style", default="code", help="The style of fsm: code(code directly) or table(table driven)")
-    parser.add_argument("--target", default="c", help="The target language of fsm: c or python")
+    parser.add_argument("--style", default="table", help="The style of fsm: code(code directly) or table(table driven)")
+    parser.add_argument("--target", default="c", help="The target language of fsm: c, dart or python")
     args = parser.parse_args()
     main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.defination, args.implementation, args.debug, args.style, args.target, True if basename(sys.argv[0]) == 'naive-fsm-generator.py' else False)
