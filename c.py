@@ -236,7 +236,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
         output += "};\n"
     return output
 
-def process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings, function):
+def process(src, prefix, directory, debug, style, states, events, actions, transformings, function):
     import os.path
     states = [preprocess(prefix, "STATE", state) for state in states]
     events = [preprocess(prefix, "EVENT", event) for event in events]
@@ -244,15 +244,9 @@ def process(src, prefix, directory, defination, implementation, debug, style, st
     if directory == None:
         directory = os.path.dirname(src)
     (root, ext) = os.path.splitext(os.path.basename(src))
-    if defination == None:
-        header = root + ".h"
-        defination = os.path.join(directory, header)
-    else:
-        (root, ext) = os.path.splitext(os.path.basename(defination))
-        header = root + ".h"
-    if implementation == None:
-        header = root + ".h"
-        implementation = os.path.join(directory, root + ".c")
+    header = root + ".h"
+    defination = os.path.join(directory, header)
+    implementation = os.path.join(directory, root + ".c")
     with open(defination, 'w') as output:
         output.write(state(prefix, states))
         output.write("\n");

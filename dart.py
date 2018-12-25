@@ -125,7 +125,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
     output += '}\n'
     return output
 
-def process(src, prefix, directory, defination, implementation, debug, style, states, events, actions, transformings, function):
+def process(src, prefix, directory, debug, style, states, events, actions, transformings, function):
     import os.path
     states = [preprocess(state) for state in states]
     events = [preprocess(event) for event in events]
