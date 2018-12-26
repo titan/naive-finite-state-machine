@@ -10,14 +10,14 @@ def preprocess(cell):
 def state(prefix, states):
     output = 'enum State {\n'
     for s in states:
-        output += ' ' * 4 + s + ',\n'
+        output += ' ' * 2 + s + ',\n'
     output += '}\n'
     return output
 
 def event(prefix, events):
     output = 'enum Event {\n'
     for e in events:
-        output += ' ' * 4 + e + ',\n'
+        output += ' ' * 2 + e + ',\n'
     output += '}\n'
     return output
 
@@ -114,7 +114,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
     output += ' ' * 4 + 'this.transform_actions = <void Function(C ctx, State state, Event event)>[%s];\n' % (', '.join(transforming_actions_table))
     output += ' ' * 2 + '}\n'
     output += ' ' * 2 + 'void process(C ctx, Event event) {\n'
-    output += ' ' * 2 + 'int idx = this.state.index * %d + event.index;\n' % len(events)
+    output += ' ' * 4 + 'int idx = this.state.index * %d + event.index;\n' % len(events)
     if debug:
         output += ' ' * 4 + 'print("(${event_strings[event.index]}, ${state_strings[this.state.index]}) => (${action_strings[idx]}, ${state_strings[transform_states[idx].index]})");\n'
     output += ' ' * 4 + 'if (this.transform_actions[idx] != null) {\n'
@@ -141,9 +141,6 @@ def process(src, prefix, directory, debug, style, states, events, actions, trans
         output.write("\n");
         output.write(action(prefix, actions))
         output.write("\n");
-        if not function:
-            output.write(action(prefix, actions))
-            output.write("\n");
         if style == "code":
             output.write(code_transforming(prefix, states, events, transformings, debug))
         else:

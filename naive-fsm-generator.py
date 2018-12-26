@@ -231,6 +231,23 @@ def main(src, prefix, directory, debug, style, target, function):
     elif target == 'dart':
         import dart
         dart.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
+    elif target == 'nim':
+        import nim
+        nim.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+    from os.path import basename
+    parser = argparse.ArgumentParser()
+    parser.add_argument("src", help="The defination of state machine in xlsx or csv")
+    parser.add_argument("-p", "--prefix", default="", help="The prefix of generated structures and functions")
+    parser.add_argument("-d", "--directory", help="The directory of generated files")
+    parser.add_argument("--debug", action='store_true', help="Output debug info in console")
+    parser.add_argument("--style", default="table", help="The style of fsm: code(code directly) or table(table driven)")
+    parser.add_argument("--target", default="c", help="The target language of fsm: c, dart or python")
+    args = parser.parse_args()
+    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.debug, args.style, args.target, True if basename(sys.argv[0]) == 'naive-fsm-generator.py' else False)
 
 if __name__ == '__main__':
     import argparse
