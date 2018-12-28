@@ -1,5 +1,8 @@
 #! /usr/bin/python3
 
+from table_fsm import Delegate as TableDelegate
+from cell_fsm import Delegate as CellDelegate
+
 def normalize(string):
     #if len(string) > 0 and string[0].isdigit():
     #    string = "number_" + string
@@ -74,7 +77,7 @@ class TableContext:
         self.lines = []
         self.rows = []
 
-class TableDelegate:
+class MyTableDelegate(TableDelegate):
     def error(self, ctx, state = 0, event = 0):
         print("Invalid table format at col %d in line %d" % (ctx.col, ctx.line))
         exit(-1)
@@ -103,7 +106,7 @@ class TableDelegate:
 def load_model_from_table(src):
     from table_fsm import Event, StateMachine
     ctx = TableContext()
-    fsm = StateMachine(TableDelegate())
+    fsm = StateMachine(MyTableDelegate())
     with open(src, 'r') as input:
         content = input.read(-1)
         for ch in content:
@@ -134,7 +137,7 @@ class CellContext:
         self.action = None
         self.state = None
 
-class CellDelegate:
+class MyCellDelegate(CellDelegate):
     def append_tmp(self, ctx, state = 0, event = 0):
         ctx.tmp += ctx.ch
     def comment_error(self, ctx, state = 0, event = 0):
@@ -182,7 +185,7 @@ def extract_model(model):
             cell = model[i][j]
             if len(cell) > 0:
                 ctx = CellContext()
-                fsm = StateMachine(CellDelegate())
+                fsm = StateMachine(MyCellDelegate())
                 for ch in str(cell):
                     ctx.ch = ch
                     if ch == '\n':
