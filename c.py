@@ -1,5 +1,8 @@
-def preprocess(prefix, postfix, cell):
-    return ("%s_%s_%s" % (prefix, cell, postfix)).replace('__', '_')
+def preprocess(prefix, cell, postfix = None):
+    if postfix:
+        return ("%s_%s_%s" % (prefix, cell, postfix)).replace('__', '_')
+    else:
+        return ("%s_%s" % (prefix, cell)).replace('__', '_')
 
 def state(prefix, states):
     i = 0
@@ -38,9 +41,9 @@ def code_transforming(prefix, states, events, transformings, debug, function):
             for j in range(len(states)):
                 (action, state) = transformings[j][i]
                 if state:
-                    state = preprocess(prefix, "STATE", state)
+                    state = preprocess(prefix, state, "STATE")
                     if action:
-                        action = preprocess(prefix, "ACTION", action)
+                        action = preprocess(prefix, action, "ACTION")
                         output += ' ' * 4 + 'case ' + states[j] + ': {\n'
                         if debug:
                             output += ' ' * 6 + 'printf("(%s, %s) => (%s, %s)\\n");\n' % (events[i], states[j], action, state)
@@ -71,7 +74,7 @@ def code_transforming(prefix, states, events, transformings, debug, function):
                 if action:
                     actions[action.lower()] = 1
         for action in actions.keys():
-            output += 'extern void %s_%s(struct %s_context_t * ctx, enum %s_STATE state, enum %s_EVENT event);\n' % (prefix.lower(), action.lower(), prefix.lower(), prefix, prefix)
+            output += 'extern void %s(struct %s_context_t * ctx, enum %s_STATE state, enum %s_EVENT event);\n' % (preprocess(prefix, action).lower(), prefix.lower(), prefix, prefix)
         output += 'void %s_init_state_machine(struct %s_state_machine_t * fsm, struct %s_context_t * ctx) {\n' % (prefix.lower(), prefix.lower(), prefix.lower())
         output += ' ' * 2 + 'fsm->ctx = ctx;\n'
         output += ' ' * 2 + 'fsm->state = %s;\n' % (states[0])
@@ -84,12 +87,12 @@ def code_transforming(prefix, states, events, transformings, debug, function):
             for si in range(len(states)):
                 (action, state) = transformings[si][ei]
                 if state:
-                    state = preprocess(prefix, 'STATE', state)
+                    state = preprocess(prefix, state, 'STATE')
                     output += ' ' * 8 + 'case ' + states[si] + ':\n'
                     if action:
                         if debug:
                             output += ' ' * 10 + 'printf("(%s, %s) => (%s, %s)\\n");\n' % (events[ei], states[si], action, state)
-                        output += ' ' * 10 + '%s_%s(fsm->ctx, fsm->state, event);\n' % (prefix.lower(), action.lower())
+                        output += ' ' * 10 + '%s(fsm->ctx, fsm->state, event);\n' % (preprocess(prefix, action).lower())
                     else:
                         if debug:
                             output += ' ' * 10 + 'printf("(%s, %s) => (N/A, %s)\\n");\n' % (events[ei], states[si], state)
@@ -161,7 +164,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
         for j in range(len(events)):
             (action, state) = transformings[i][j]
             if state:
-                state = preprocess(prefix, "STATE", state)
+                state = preprocess(prefix, state, "STATE")
                 output += ' ' + str(state) + ','
             else:
                 output += ' ' + str(states[i]) + ','
@@ -175,7 +178,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
             for j in range(len(events)):
                 (action, state) = transformings[i][j]
                 if action:
-                    action = preprocess(prefix, "ACTION", action)
+                    action = preprocess(prefix, action, "ACTION")
                     output += ' ' + str(action) + ','
                 else:
                     output += ' 0,'
@@ -205,14 +208,14 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
                 (action, state) = transformings[si][ei]
                 if action:
                     actions[action.lower()] = 1
-                    tmp += prefix.lower() + '_' + action.lower() + ', '
+                    tmp += preprocess(prefix, action).lower() + ', '
                 else:
                     tmp += 'NULL, '
             tmp = tmp[0:-2]
             tmp += '},\n'
         tmp += "};\n"
         for action in actions.keys():
-            output += 'extern void %s_%s(struct %s_context_t * ctx, enum %s_STATE state, enum %s_EVENT event);\n' % (prefix.lower(), action.lower(), prefix.lower(), prefix, prefix)
+            output += 'extern void %s(struct %s_context_t * ctx, enum %s_STATE state, enum %s_EVENT event);\n' % (preprocess(prefix, action).lower(), prefix.lower(), prefix, prefix)
         output += tmp;
         output += "void %s_init_state_machine(struct %s_state_machine_t * fsm, struct %s_context_t * ctx) {\n" % (prefix.lower(), prefix.lower(), prefix.lower())
         output += ' ' * 2 + 'fsm->ctx = ctx;\n'
@@ -238,9 +241,9 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
 
 def process(src, prefix, directory, debug, style, states, events, actions, transformings, function):
     import os.path
-    states = [preprocess(prefix, "STATE", state) for state in states]
-    events = [preprocess(prefix, "EVENT", event) for event in events]
-    actions = [preprocess(prefix, "ACTION", action) for action in actions]
+    states = [preprocess(prefix, state, "STATE") for state in states]
+    events = [preprocess(prefix, event, "EVENT") for event in events]
+    actions = [preprocess(prefix, action, "ACTION") for action in actions]
     if directory == None:
         directory = os.path.dirname(src)
     (root, ext) = os.path.splitext(os.path.basename(src))
