@@ -201,7 +201,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
         output += "}\n"
     else:
         actions = {}
-        tmp = "static state_machine_action_fn %s_transform_actions[%d][%d] = {\n" % (prefix.lower(), len(states), len(events))
+        tmp = "static %s_state_machine_action_fn %s_transform_actions[%d][%d] = {\n" % (prefix.lower(), prefix.lower(), len(states), len(events))
         for si in range(len(states)):
             tmp += ' ' * 2 + '{'
             for ei in range(len(events)):
@@ -251,24 +251,27 @@ def process(src, prefix, directory, debug, style, states, events, actions, trans
     defination = os.path.join(directory, header)
     implementation = os.path.join(directory, root + ".c")
     with open(defination, 'w') as output:
+        output.write('#ifndef __%s\n' % (header.replace('-', '_').replace('.', '_').upper()))
+        output.write('#define __%s\n' % (header.replace('-', '_').replace('.', '_').upper()))
         output.write(state(prefix, states))
-        output.write("\n");
+        output.write("\n")
         output.write(event(prefix, events))
-        output.write("\n");
+        output.write("\n")
         if not function:
             output.write(action(prefix, actions))
-            output.write("\n");
+            output.write("\n")
             output.write("enum %s_STATE %s_transform_state(enum %s_STATE state, enum %s_EVENT event, void * data);\n" % (prefix, prefix.lower(), prefix, prefix))
             output.write("void %s_do_action(enum %s_ACTION action, void * data);\n" % (prefix.lower(), prefix))
         else:
-            output.write("struct %s_context_t;\n" % (prefix.lower()));
-            output.write("struct %s_state_machine_t {\n" % (prefix.lower()));
-            output.write(' ' * 2 + "enum %s_STATE state;\n" % (prefix));
-            output.write(' ' * 2 + "struct %s_context_t * ctx;\n" % (prefix.lower()));
-            output.write("};\n");
-            output.write("typedef void (* state_machine_action_fn)(struct %s_context_t * ctx, enum %s_STATE state, enum %s_EVENT event);\n" % (prefix.lower(), prefix, prefix));
+            output.write("struct %s_context_t;\n" % (prefix.lower()))
+            output.write("struct %s_state_machine_t {\n" % (prefix.lower()))
+            output.write(' ' * 2 + "enum %s_STATE state;\n" % (prefix))
+            output.write(' ' * 2 + "struct %s_context_t * ctx;\n" % (prefix.lower()))
+            output.write("};\n")
+            output.write("typedef void (* %s_state_machine_action_fn)(struct %s_context_t * ctx, enum %s_STATE state, enum %s_EVENT event);\n" % (prefix.lower(), prefix.lower(), prefix, prefix))
             output.write("void %s_init_state_machine(struct %s_state_machine_t * fsm, struct %s_context_t * ctx);\n" % (prefix.lower(), prefix.lower(), prefix.lower()))
             output.write("void %s_process(struct %s_state_machine_t * fsm, enum %s_EVENT event);\n" % (prefix.lower(), prefix.lower(), prefix))
+        output.write("#endif\n")
     with open(implementation, 'w') as output:
         if debug:
             output.write('#include <stdio.h>\n')
