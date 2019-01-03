@@ -67,19 +67,11 @@ def code_transforming(prefix, states, events, transformings, debug, function):
         output += "}\n"
     else:
         output = ''
-        actions = {}
-        for si in range(len(states)):
-            for ei in range(len(events)):
-                (action, state) = transformings[si][ei]
-                if action:
-                    actions[action.lower()] = 1
-        for action in actions.keys():
-            output += 'extern void %s(struct %s_context * ctx, enum %s_STATE state, enum %s_EVENT event);\n' % (preprocess(prefix, action).lower(), prefix.lower(), prefix, prefix)
-        output += 'void %s_init_state_machine(struct %s_state_machine * fsm, struct %s_context * ctx) {\n' % (prefix.lower(), prefix.lower(), prefix.lower())
+        output += 'void %s_state_machine_init(struct %s_state_machine * fsm, struct %s_context * ctx) {\n' % (prefix.lower(), prefix.lower(), prefix.lower())
         output += ' ' * 2 + 'fsm->ctx = ctx;\n'
         output += ' ' * 2 + 'fsm->state = %s;\n' % (states[0])
         output += '}\n'
-        output += 'void %s_process(struct %s_state_machine * fsm, enum %s_EVENT event) {\n' % (prefix.lower(), prefix.lower(), prefix)
+        output += 'void %s_state_machine_process(struct %s_state_machine * fsm, enum %s_EVENT event) {\n' % (prefix.lower(), prefix.lower(), prefix)
         output += ' ' * 2 + 'switch (event) {\n'
         for ei in range(len(events)):
             output += ' ' * 4 + 'case ' + events[ei] + ': {\n'
@@ -214,14 +206,12 @@ def table_transforming(prefix, states, events, actions, transformings, debug, fu
             tmp = tmp[0:-2]
             tmp += '},\n'
         tmp += "};\n"
-        for action in actions.keys():
-            output += 'extern void %s(struct %s_context * ctx, enum %s_STATE state, enum %s_EVENT event);\n' % (preprocess(prefix, action).lower(), prefix.lower(), prefix, prefix)
         output += tmp;
-        output += "void %s_init_state_machine(struct %s_state_machine * fsm, struct %s_context * ctx) {\n" % (prefix.lower(), prefix.lower(), prefix.lower())
+        output += "void %s_state_machine_init(struct %s_state_machine * fsm, struct %s_context * ctx) {\n" % (prefix.lower(), prefix.lower(), prefix.lower())
         output += ' ' * 2 + 'fsm->ctx = ctx;\n'
         output += ' ' * 2 + 'fsm->state = %s;\n' % (states[0])
         output += "}\n"
-        output += "void %s_process(struct %s_state_machine * fsm, enum %s_EVENT event) {\n" % (prefix.lower(), prefix.lower(), prefix)
+        output += "void %s_state_machine_process(struct %s_state_machine * fsm, enum %s_EVENT event) {\n" % (prefix.lower(), prefix.lower(), prefix)
         if debug:
             output += ' ' * 2 + 'printf("(");\n'
             output += ' ' * 2 + 'printf(%s_event_strings[event]);\n' % prefix.lower()
@@ -243,13 +233,22 @@ def process(src, prefix, directory, debug, style, states, events, actions, trans
     import os.path
     states = [preprocess(prefix, state, "STATE") for state in states]
     events = [preprocess(prefix, event, "EVENT") for event in events]
-    actions = [preprocess(prefix, action, "ACTION") for action in actions]
     if directory == None:
         directory = os.path.dirname(src)
     (root, ext) = os.path.splitext(os.path.basename(src))
     header = root + ".h"
     defination = os.path.join(directory, header)
     implementation = os.path.join(directory, root + ".c")
+    action_header = root + '-actions.h'
+    action_defination = os.path.join(directory, action_header)
+    if function:
+        with open(action_defination, 'w') as output:
+            output.write('#ifndef __%s\n' % (action_header.replace('-', '_').replace('.', '_').upper()))
+            output.write('#define __%s\n' % (action_header.replace('-', '_').replace('.', '_').upper()))
+            for action in actions:
+                output.write('void %s(struct %s_context * ctx, enum %s_STATE state, enum %s_EVENT event);\n' % (preprocess(prefix, action).lower(), prefix.lower(), prefix, prefix))
+            output.write("#endif\n")
+    actions = [preprocess(prefix, action, "ACTION") for action in actions]
     with open(defination, 'w') as output:
         output.write('#ifndef __%s\n' % (header.replace('-', '_').replace('.', '_').upper()))
         output.write('#define __%s\n' % (header.replace('-', '_').replace('.', '_').upper()))
@@ -269,14 +268,16 @@ def process(src, prefix, directory, debug, style, states, events, actions, trans
             output.write(' ' * 2 + "struct %s_context * ctx;\n" % (prefix.lower()))
             output.write("};\n")
             output.write("typedef void (* %s_state_machine_action_fn)(struct %s_context * ctx, enum %s_STATE state, enum %s_EVENT event);\n" % (prefix.lower(), prefix.lower(), prefix, prefix))
-            output.write("void %s_init_state_machine(struct %s_state_machine * fsm, struct %s_context * ctx);\n" % (prefix.lower(), prefix.lower(), prefix.lower()))
-            output.write("void %s_process(struct %s_state_machine * fsm, enum %s_EVENT event);\n" % (prefix.lower(), prefix.lower(), prefix))
+            output.write("void %s_state_machine_init(struct %s_state_machine * fsm, struct %s_context * ctx);\n" % (prefix.lower(), prefix.lower(), prefix.lower()))
+            output.write("void %s_state_machine_process(struct %s_state_machine * fsm, enum %s_EVENT event);\n" % (prefix.lower(), prefix.lower(), prefix))
         output.write("#endif\n")
     with open(implementation, 'w') as output:
         if debug:
             output.write('#include <stdio.h>\n')
         output.write('#include <stdlib.h>\n')
         output.write('#include "%s"\n' % header)
+        if function:
+            output.write('#include "%s"\n' % action_header)
         if style == "code":
             output.write(code_transforming(prefix, states, events, transformings, debug, function))
         else:
