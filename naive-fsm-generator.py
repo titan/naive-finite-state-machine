@@ -211,7 +211,7 @@ def extract_model(model):
                 transformings[i - 1].append((None, None))
     return states, events, actions.keys(), transformings
 
-def main(src, prefix, directory, debug, style, target, function):
+def main(src, prefix, directory, debug, style, lang, function):
     model = None
     if src.endswith("csv"):
         model = load_model_from_csv(src)
@@ -225,16 +225,16 @@ def main(src, prefix, directory, debug, style, target, function):
         print("Cannot load model from %s" % src)
         exit(-1)
     (states, events, actions, transformings) = extract_model(model)
-    if target == "c":
+    if lang == "c":
         import c
         c.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
-    elif target == "python":
+    elif lang == "python":
         import python
         python.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
-    elif target == 'dart':
+    elif lang == 'dart':
         import dart
         dart.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
-    elif target == 'nim':
+    elif lang == 'nim':
         import nim
         nim.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
 
@@ -248,6 +248,6 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--directory", help="The directory of generated files")
     parser.add_argument("--debug", action='store_true', help="Output debug info in console")
     parser.add_argument("--style", default="table", help="The style of fsm: code(code directly) or table(table driven)")
-    parser.add_argument("--target", default="c", help="The target language of fsm: c, dart or python")
+    parser.add_argument("--lang", default="c", help="The target language of fsm: c, dart, nim or python")
     args = parser.parse_args()
-    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.debug, args.style, args.target, True if basename(sys.argv[0]) == 'naive-fsm-generator.py' else False)
+    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.debug, args.style, args.lang, True if basename(sys.argv[0]) == 'naive-fsm-generator.py' else False)
