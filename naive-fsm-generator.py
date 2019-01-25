@@ -237,6 +237,9 @@ def main(src, prefix, directory, debug, style, lang, function):
     elif lang == 'nim':
         import nim
         nim.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
+    elif lang == 'dot':
+        import dot
+        dot.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
 
 if __name__ == '__main__':
     import argparse
@@ -248,6 +251,6 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--directory", help="The directory of generated files")
     parser.add_argument("--debug", action='store_true', help="Output debug info in console")
     parser.add_argument("--style", default="table", help="The style of fsm: code(code directly) or table(table driven)")
-    parser.add_argument("--lang", default="c", help="The target language of fsm: c, dart, nim or python")
+    parser.add_argument("--lang", default="c", help="The target language of fsm: c, dart, dot, nim or python")
     args = parser.parse_args()
     main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.debug, args.style, args.lang, True if basename(sys.argv[0]) == 'naive-fsm-generator.py' else False)
