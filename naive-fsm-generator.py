@@ -211,7 +211,7 @@ def extract_model(model):
                 transformings[i - 1].append((None, None))
     return states, events, actions.keys(), transformings
 
-def main(src, prefix, directory, debug, style, lang, function):
+def main(src, prefix, directory, debug, style, lang):
     model = None
     if src.endswith("csv"):
         model = load_model_from_csv(src)
@@ -227,19 +227,19 @@ def main(src, prefix, directory, debug, style, lang, function):
     (states, events, actions, transformings) = extract_model(model)
     if lang == "c":
         import c
-        c.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
+        c.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == "python":
         import python
-        python.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
+        python.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == 'dart':
         import dart
-        dart.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
+        dart.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == 'nim':
         import nim
-        nim.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
+        nim.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == 'dot':
         import dot
-        dot.process(src, prefix, directory, debug, style, states, events, actions, transformings, function)
+        dot.process(src, prefix, directory, debug, style, states, events, actions, transformings)
 
 if __name__ == '__main__':
     import argparse
@@ -253,4 +253,4 @@ if __name__ == '__main__':
     parser.add_argument("--style", default="table", help="The style of fsm: code(code directly) or table(table driven)")
     parser.add_argument("--lang", default="c", help="The target language of fsm: c, dart, dot, nim or python")
     args = parser.parse_args()
-    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.debug, args.style, args.lang, True if basename(sys.argv[0]) == 'naive-fsm-generator.py' else False)
+    main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.debug, args.style, args.lang)

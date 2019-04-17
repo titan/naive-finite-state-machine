@@ -31,7 +31,7 @@ def transforming(states, events, transformings):
   output += '}\n'
   return output
 
-def process(src, prefix, directory, debug, style, states, events, actions, transformings, function):
+def process(src, prefix, directory, debug, style, states, events, actions, transformings):
   import os.path
   if directory == None:
     directory = os.path.dirname(src)
