@@ -1,168 +1,164 @@
-def preprocess(prefix, cell, postfix = None):
-    if postfix:
-        return ("%s_%s_%s" % (prefix, cell, postfix)).replace('__', '_')
-    else:
-        return ("%s_%s" % (prefix, cell)).replace('__', '_')
+def preprocess(cell, as_key = False):
+    if cell.startswith('_'):
+        cell = cell[1:]
+    if cell.endswith('_'):
+        cell = cell[:-1]
+    if as_key:
+        if cell[0].isdigit():
+            cell = "NUMBER_" + cell
+    return cell
 
 def state(prefix, states):
-    i = 0
-    output = "enum %s_STATE {\n" % prefix.upper()
-    for s in states:
-        output += " " * 2 + s + " = %d,\n" % i
-        i += 1
-    output += "};\n"
-    return output
-
-def event(prefix, events):
-    i = 0
-    output = "enum %s_EVENT {\n" % prefix.upper()
-    for e in events:
-        output += " " * 2 + e + " = %d,\n" % i
-        i += 1
-    output += "};\n"
-    return output
-
-def action(prefix, actions):
     i = 1
-    output = "enum %s_ACTION {\n" % prefix.upper()
-    for a in actions:
-        output += " " * 2 + a + " = %d,\n" % i
+    output = "enum %s_STATE_MACHINE_STATE {\n" % prefix.upper()
+    for s in states:
+        output += " " * 2 + '{prefix}_STATE_MACHINE_STATE_{state} = {index},\n'.format(prefix = prefix.upper(), state = preprocess(s).upper(), index = i)
         i += 1
     output += "};\n"
     return output
+
+def event_fun_declare(prefix, events):
+    return '\n'.join(['void {0}_state_machine_event_{1}(struct {0}_state_machine * fsm);'.format(prefix, evt.lower()) for evt in events]) + '\n'
 
 def code_transforming(prefix, states, events, transformings, debug):
     output = ''
-    output += 'void %s_state_machine_init(struct %s_state_machine * fsm, struct %s_context * ctx) {\n' % (prefix.lower(), prefix.lower(), prefix.lower())
+    output += 'void {prefix}_state_machine_init(struct {prefix}_state_machine * fsm, struct {prefix}_state_machine_context * ctx) {{\n'.format(prefix = prefix)
     output += ' ' * 2 + 'fsm->ctx = ctx;\n'
-    output += ' ' * 2 + 'fsm->state = %s;\n' % (states[0])
-    output += '}\n'
-    output += 'void %s_state_machine_process(struct %s_state_machine * fsm, enum %s_EVENT event) {\n' % (prefix.lower(), prefix.lower(), prefix)
-    output += ' ' * 2 + 'switch (event) {\n'
+    output += ' ' * 2 + 'fsm->state = {0}_STATE_MACHINE_STATE_{1};\n'.format(prefix.upper(), states[0].upper())
+    output += '}\n\n'
     for ei in range(len(events)):
-        output += ' ' * 4 + 'case ' + events[ei] + ': {\n'
-        output += ' ' * 6 + 'switch (fsm->state) {\n'
+        event = preprocess(events[ei]).lower()
+        output += 'void {prefix}_state_machine_event_{event}(struct {prefix}_state_machine * fsm) {{\n'.format(prefix = prefix, event = event)
+        output += ' ' * 2 + 'switch (fsm->state) {\n'
+        count = 0
         for si in range(len(states)):
-            (action, state) = transformings[si][ei]
+            (actions, state) = transformings[si][ei]
             if state:
-                state = preprocess(prefix, state, 'STATE')
-                output += ' ' * 8 + 'case ' + states[si] + ':\n'
-                if action:
+                count += 1
+                state = preprocess(state)
+                output += ' ' * 4 + 'case {0}_STATE_MACHINE_STATE_{1}:\n'.format(prefix.upper(), preprocess(states[si]).upper())
+                if len(actions) > 0:
                     if debug:
-                        output += ' ' * 10 + 'printf("(%s, %s) => (%s, %s)\\n");\n' % (events[ei], states[si], action, state)
-                    output += ' ' * 10 + '%s(fsm->ctx, fsm->state, event);\n' % (preprocess(prefix, action).lower())
+                        output += ' ' * 6 + 'printf("(%s, %s) => (%s, %s)\\n");\n' % (preprocess(events[ei]), preprocess(states[si]), ' |> '.join([x.upper() for x in actions]), preprocess(state))
+                    for action in actions:
+                        output += ' ' * 6 + '{0}_state_machine_action_{1}(fsm->ctx);\n'.format(prefix, preprocess(action).lower())
                 else:
                     if debug:
-                        output += ' ' * 10 + 'printf("(%s, %s) => (N/A, %s)\\n");\n' % (events[ei], states[si], state)
+                        output += ' ' * 6 + 'printf("(%s, %s) => (N/A, %s)\\n");\n' % (preprocess(events[ei]), preprocess(states[si]), preprocess(state))
                 if state != states[si]:
-                    output += ' ' * 10 + 'fsm->state = %s;\n' % (state)
-                output += ' ' * 10 + 'break;\n'
-        output += ' ' * 8 + 'default: break;\n'
-        output += ' ' * 6 + '}\n'
-        output += ' ' * 4 + '}\n'
-    output += ' ' * 4 + 'default: break;\n'
-    output += ' ' * 2 + '}\n'
-    output += '}\n'
+                    output += ' ' * 6 + 'fsm->state = {0}_STATE_MACHINE_STATE_{1};\n'.format(prefix.upper(), preprocess(state).upper())
+                output += ' ' * 6 + 'break;\n'
+            elif len(actions) > 0:
+                count += 1
+                output += ' ' * 4 + 'case {0}_STATE_MACHINE_STATE_{1}:\n'.format(prefix.upper(), preprocess(states[si]).upper())
+                if debug:
+                    output += ' ' * 6 + 'printf("(%s, %s) => (%s, N/A)\\n");\n' % (preprocess(events[ei]), preprocess(states[si]), ' |> '.join([x.upper() for x in actions]))
+                for action in actions:
+                    output += ' ' * 6 + '{0}_state_machine_action_{1}(fsm->ctx);\n'.format(prefix, preprocess(action).lower())
+            else:
+                pass
+        if count != len(states):
+            output += ' ' * 4 + 'default: break;\n'
+        output += ' ' * 2 + '}\n'
+        output += '}\n\n'
     return output
 
-def table_transforming(prefix, states, events, actions, transformings, debug):
-    # calculate action type
-    if len(actions) > 256 and len(actions) <= 65536:
-        action_type = 'unsigned short'
-    elif len(actions) > 65536:
-        action_type = 'unsigned int'
-    else:
-        action_type = 'unsigned char'
+def table_transforming(prefix, states, events, transformings, debug):
 
     # calculate state type
     if len(states) > 256 and len(states) <= 65536:
-        state_type = 'unsigned short'
-    elif len(actions) > 65535:
-        state_type = 'unsigned int'
+        state_type = 'short'
+    elif len(states) > 65535:
+        state_type = 'int'
     else:
-        state_type = 'unsigned char'
+        state_type = 'char'
 
     output = ""
 
     if debug:
+        output += "static char * %s_state_strings[%d] = {\n%s\n};\n\n" % (prefix, len(states) + 1, ',\n'.join(['  ""'] + ['  "%s"' % s for s in states]))
 
-        output += "static char * %s_state_strings[%d] = {\n" % (prefix.lower(), len(states))
-        for s in states:
-            output += ' ' * 2 + '"%s",\n' % s
-        output += "};\n"
-
-        output += "static char * %s_event_strings[%d] = {\n" % (prefix.lower(), len(events))
-        for e in events:
-            output += ' ' * 2 + '"%s",\n' % e
-        output += "};\n"
-
-        output += "static char * %s_action_strings[%d][%d] = {\n" % (prefix.lower(), len(states), len(events))
+        actions_table = ['  { %s }' % ', '.join(['"N/A"'] * len(events))]
         for si in range(len(states)):
-            output += ' ' * 2 + '{'
+            actions = []
             for ei in range(len(events)):
-                (action, state) = transformings[si][ei]
-                if action:
-                    output += ' "' + str(action) + '",'
+                (_actions, state) = transformings[si][ei]
+                if len(_actions) > 0:
+                    actions.append('"{0}"'.format(' |> '.join([str(x).upper() for x in _actions])))
                 else:
-                    output += ' "N/A",'
-            output = output[0:-1]
-            output += ' },\n'
-        output += "};\n"
+                    actions.append('"N/A"')
+            actions_table.append('  { %s }' % (', '.join(actions)))
+        output += "static char * %s_action_strings[%d][%d] = {\n%s\n};\n\n" % (prefix, len(states) + 1, len(events), ',\n'.join(actions_table))
 
-    output += "static " + state_type + " %s_transform_states[%d][%d] = {\n" % (prefix.lower(), len(states), len(events))
-    for i in range(len(states)):
-        output += ' ' * 2 + '{'
-        for j in range(len(events)):
-            (action, state) = transformings[i][j]
-            if state:
-                state = preprocess(prefix, state, "STATE")
-                output += ' ' + str(state) + ','
-            else:
-                output += ' ' + str(states[i]) + ','
-        output = output[0:-1]
-        output += ' ' + '},\n'
-    output += "};\n"
-    actions = {}
-    tmp = "static %s_state_machine_action_fn %s_transform_actions[%d][%d] = {\n" % (prefix.lower(), prefix.lower(), len(states), len(events))
+    transforming_states_table = ['  { %s }' % ', '.join(['0'] * len(events))]
     for si in range(len(states)):
-        tmp += ' ' * 2 + '{'
+        transforming_states = []
         for ei in range(len(events)):
-            (action, state) = transformings[si][ei]
-            if action:
-                actions[action.lower()] = 1
-                tmp += preprocess(prefix, action).lower() + ', '
+            (_, state) = transformings[si][ei]
+            if state:
+                transforming_states.append(states.index(state) - si)
             else:
-                tmp += 'NULL, '
-        tmp = tmp[0:-2]
-        tmp += '},\n'
-    tmp += "};\n"
-    output += tmp;
-    output += "void %s_state_machine_init(struct %s_state_machine * fsm, struct %s_context * ctx) {\n" % (prefix.lower(), prefix.lower(), prefix.lower())
+                transforming_states.append(0)
+        transforming_states_table.append('  { %s }' % ', '.join(['%d' % x for x in transforming_states]))
+
+    output += "static " + state_type + " %s_transform_states[%d][%d] = {\n%s\n};\n\n" % (prefix, len(states) + 1, len(events), ',\n'.join(transforming_states_table))
+
+    actionid = 1
+    inner_actions = {}
+    transforming_actions_table = []
+    for si in range(len(states)):
+        transforming_actions = []
+        for ei in range(len(events)):
+            (actions, state) = transformings[si][ei]
+            if len(actions) == 1:
+                transforming_actions.append(preprocess(str(actions[0])).lower())
+            elif len(actions) > 0:
+                key = "".join([str(a) for a in actions])
+                if key not in inner_actions:
+                    transforming_actions.append(actionid)
+                    inner_actions[key] = (actionid, actions)
+                    actionid += 1
+                else:
+                    (aid, _) = inner_actions[key]
+                    transforming_actions.append(aid)
+            else:
+                transforming_actions.append(None)
+        transforming_actions_table.append(transforming_actions)
+
+    output += 'static void {0}_state_machine_inner_action_noop(struct {0}_state_machine_context * ctx) {{\n  (void)ctx;\n}}\n\n'.format(prefix)
+    for (aid, actions) in inner_actions.values():
+        output += 'static void {0}_state_machine_inner_action_{1}(struct {0}_state_machine_context * ctx) {{\n'.format(prefix, aid)
+        for action in actions:
+            output += ' ' * 2 + '{0}_state_machine_action_{1}(ctx);\n'.format(prefix, action)
+        output += '}\n\n'
+
+    output += 'static {0}_state_machine_action_fn {0}_transform_actions[{1}][{2}] = {{\n{3}\n}};\n\n'.format(prefix, len(states) + 1, len(events), ',\n'.join(['  {{ {0} }}'.format(', '.join(['{0}_state_machine_inner_action_noop'.format(prefix) if y is None else ('{0}_state_machine_action_{1}'.format(prefix, y) if isinstance(y, str) else '{0}_state_machine_inner_action_{1}'.format(prefix, y)) for y in x])) for x in ([[None] * len(events)] + transforming_actions_table)]))
+
+
+    output += "void {prefix}_state_machine_init(struct {prefix}_state_machine * fsm, struct {prefix}_state_machine_context * ctx) {{\n".format(prefix=prefix)
     output += ' ' * 2 + 'fsm->ctx = ctx;\n'
-    output += ' ' * 2 + 'fsm->state = %s;\n' % (states[0])
-    output += "}\n"
-    output += "void %s_state_machine_process(struct %s_state_machine * fsm, enum %s_EVENT event) {\n" % (prefix.lower(), prefix.lower(), prefix)
-    if debug:
-        output += ' ' * 2 + 'printf("(");\n'
-        output += ' ' * 2 + 'printf(%s_event_strings[event]);\n' % prefix.lower()
-        output += ' ' * 2 + 'printf(", ");\n'
-        output += ' ' * 2 + 'printf(%s_state_strings[fsm->state]);\n' % prefix.lower()
-        output += ' ' * 2 + 'printf(") => (");\n'
-        output += ' ' * 2 + 'printf(%s_action_strings[fsm->state][event]);\n' % (prefix.lower())
-        output += ' ' * 2 + 'printf(", ");\n'
-        output += ' ' * 2 + 'printf(%s_state_strings[%s_transform_states[fsm->state][event]]);\n' % (prefix.lower(), prefix.lower())
-        output += ' ' * 2 + 'printf(")\\n");\n'
-    output += ' ' * 2 + 'if (%s_transform_actions[fsm->state][event]) {\n' % (prefix.lower())
-    output += ' ' * 4 + '%s_transform_actions[fsm->state][event](fsm->ctx, fsm->state, event);\n' % (prefix.lower())
-    output += ' ' * 2 + "};\n"
-    output += ' ' * 2 + "fsm->state = %s_transform_states[fsm->state][event];\n" % (prefix.lower())
-    output += "};\n"
+    output += ' ' * 2 + 'fsm->state = {prefix}_STATE_MACHINE_STATE_{state};\n'.format(prefix = prefix.upper(), state = preprocess(states[0]).upper())
+    output += "}\n\n"
+    for evt in events:
+        ei = events.index(evt)
+        event = preprocess(evt).lower()
+        output += "void {prefix}_state_machine_event_{event}(struct {prefix}_state_machine * fsm) {{\n".format(prefix=prefix, event = event)
+        if debug:
+            output += ' ' * 2 + 'printf("(%s, ");\n' % (event.upper())
+            output += ' ' * 2 + 'printf(%s_state_strings[fsm->state]);\n' % prefix
+            output += ' ' * 2 + 'printf(") => (");\n'
+            output += ' ' * 2 + 'printf(%s_action_strings[fsm->state][%d]);\n' % (prefix, ei)
+            output += ' ' * 2 + 'printf(", ");\n'
+            output += ' ' * 2 + 'printf({prefix}_state_strings[fsm->state + {prefix}_transform_states[fsm->state][{ei}]]);\n'.format(prefix = prefix, ei = ei)
+            output += ' ' * 2 + 'printf(")\\n");\n'
+        output += ' ' * 2 + '{prefix}_transform_actions[fsm->state][{ei}](fsm->ctx);\n'.format(prefix = prefix, ei = ei)
+        output += ' ' * 2 + "fsm->state += {prefix}_transform_states[fsm->state][{ei}];\n".format(prefix = prefix, ei = ei)
+        output += "}\n\n"
     return output
 
 def process(src, prefix, directory, debug, style, states, events, actions, transformings):
     import os.path
-    states = [preprocess(prefix, state, "STATE") for state in states]
-    events = [preprocess(prefix, event, "EVENT") for event in events]
+    prefix = prefix.lower()
     if directory == None:
         directory = os.path.dirname(src)
     (root, ext) = os.path.splitext(os.path.basename(src))
@@ -174,25 +170,23 @@ def process(src, prefix, directory, debug, style, states, events, actions, trans
     with open(action_defination, 'w') as output:
         output.write('#ifndef __%s\n' % (action_header.replace('-', '_').replace('.', '_').upper()))
         output.write('#define __%s\n' % (action_header.replace('-', '_').replace('.', '_').upper()))
+        output.write("struct %s_state_machine_context;\n" % (prefix))
         for action in actions:
-            output.write('void %s(struct %s_context * ctx, enum %s_STATE state, enum %s_EVENT event);\n' % (preprocess(prefix, action).lower(), prefix.lower(), prefix, prefix))
+            output.write('void {prefix}_state_machine_action_{action}(struct {prefix}_state_machine_context * ctx);\n'.format(prefix=prefix, action=preprocess(action).lower()))
         output.write("#endif\n")
-    actions = [preprocess(prefix, action, "ACTION") for action in actions]
     with open(defination, 'w') as output:
         output.write('#ifndef __%s\n' % (header.replace('-', '_').replace('.', '_').upper()))
         output.write('#define __%s\n' % (header.replace('-', '_').replace('.', '_').upper()))
         output.write(state(prefix, states))
         output.write("\n")
-        output.write(event(prefix, events))
-        output.write("\n")
-        output.write("struct %s_context;\n" % (prefix.lower()))
-        output.write("struct %s_state_machine {\n" % (prefix.lower()))
-        output.write(' ' * 2 + "enum %s_STATE state;\n" % (prefix))
-        output.write(' ' * 2 + "struct %s_context * ctx;\n" % (prefix.lower()))
+        output.write("struct %s_state_machine_context;\n" % (prefix))
+        output.write("struct %s_state_machine {\n" % (prefix))
+        output.write(' ' * 2 + "enum %s_STATE_MACHINE_STATE state;\n" % (prefix.upper()))
+        output.write(' ' * 2 + "struct %s_state_machine_context * ctx;\n" % (prefix))
         output.write("};\n")
-        output.write("typedef void (* %s_state_machine_action_fn)(struct %s_context * ctx, enum %s_STATE state, enum %s_EVENT event);\n" % (prefix.lower(), prefix.lower(), prefix, prefix))
-        output.write("void %s_state_machine_init(struct %s_state_machine * fsm, struct %s_context * ctx);\n" % (prefix.lower(), prefix.lower(), prefix.lower()))
-        output.write("void %s_state_machine_process(struct %s_state_machine * fsm, enum %s_EVENT event);\n" % (prefix.lower(), prefix.lower(), prefix))
+        output.write("typedef void (* {0}_state_machine_action_fn)(struct {0}_state_machine_context * ctx);\n".format(prefix))
+        output.write("void {prefix}_state_machine_init(struct {prefix}_state_machine * fsm, struct {prefix}_state_machine_context * ctx);\n".format(prefix = prefix))
+        output.write(event_fun_declare(prefix, events))
         output.write("#endif\n")
     with open(implementation, 'w') as output:
         if debug:
@@ -200,8 +194,8 @@ def process(src, prefix, directory, debug, style, states, events, actions, trans
         output.write('#include <stdlib.h>\n')
         output.write('#include "%s"\n' % header)
         output.write('#include "%s"\n' % action_header)
+        output.write('\n')
         if style == "code":
             output.write(code_transforming(prefix, states, events, transformings, debug))
         else:
-            output.write(table_transforming(prefix, states, events, actions, transformings, debug))
-        output.write("\n");
+            output.write(table_transforming(prefix, states, events, transformings, debug))

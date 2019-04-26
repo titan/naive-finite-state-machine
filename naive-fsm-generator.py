@@ -1,11 +1,15 @@
 #! /usr/bin/python3
 
 from table_fsm import Delegate as TableDelegate
-from cell_fsm import Delegate as CellDelegate
+from semantic import Assignment, Call, Expression, Identifier
+from analyzer import ActionSyntaxer, ActionLexerAdapter
+from lexer import Lexer
 
 def normalize(string):
     #if len(string) > 0 and string[0].isdigit():
     #    string = "number_" + string
+    if not string:
+        return None
     mappings = {}
     mappings['_'] = '_UNDERLINE_'
     mappings['!='] = '_NOT_EQUALS_'
@@ -129,48 +133,11 @@ def load_model_from_table(src):
                 ctx.col += 1
     return ctx.rows
 
-class CellContext:
-    def __init__(self):
-        self.buf = ""
-        self.tmp = ""
-        self.ch = None
-        self.action = None
-        self.state = None
-
-class MyCellDelegate(CellDelegate):
-    def append_tmp(self, ctx, state = 0, event = 0):
-        ctx.tmp += ctx.ch
-    def comment_error(self, ctx, state = 0, event = 0):
-        ctx.buf += ctx.ch
-        print("Invalid comment: %s" % ctx.buf)
-        exit(-1)
-    def append(self, ctx, state = 0, event = 0):
-        ctx.buf += ctx.ch
-    def combine_tmp_comma_append(self, ctx, state = 0, event = 0):
-        ctx.buf += ctx.tmp
-        ctx.tmp = ""
-        ctx.buf += ctx.ch
-    def combine_tmp_comma_action(self, ctx, state = 0, event = 0):
-        ctx.buf += ctx.tmp
-        ctx.tmp = ""
-        ctx.action = ctx.buf
-        ctx.buf = ""
-    def action(self, ctx, state = 0, event = 0):
-        ctx.action = ctx.buf
-        ctx.buf = ""
-    def state_error(self, ctx, state = 0, event = 0):
-        ctx.buf += ctx.ch
-        print("Invalid state: %s" % ctx.buf)
-        exit(-1)
-    def state(self, ctx, state = 0, event = 0):
-        ctx.state = ctx.buf
-        ctx.buf = ""
-
 def extract_model(model):
     from cell_fsm import Event, StateMachine
     states = []
     events = []
-    actions = {}
+    actionmap = {}
     transformings = []
     headers = model[0]
     for i in range(1, len(headers)):
@@ -184,32 +151,35 @@ def extract_model(model):
         for j in range(1, len(model[i])):
             cell = model[i][j]
             if len(cell) > 0:
-                ctx = CellContext()
-                fsm = StateMachine(MyCellDelegate())
-                for ch in str(cell):
-                    ctx.ch = ch
-                    if ch == '\n':
-                        fsm.process(ctx, Event.LF)
-                    elif ch == '-':
-                        fsm.process(ctx, Event.MINUS)
-                    elif ch == '\\':
-                        fsm.process(ctx, Event.BACKSLASH)
-                    elif ch == '(':
-                        fsm.process(ctx, Event.OPEN_PARENTHESIS)
-                    elif ch == ')':
-                        fsm.process(ctx, Event.CLOSE_PARENTHESIS)
+                state_line = False
+                actions = []
+                state = None
+                for line in str(cell).split('\n'):
+                    if line.startswith('----') or line.startswith('===='):
+                        state_line = True
+                        continue
+                    if not state_line:
+                        if len(line) == 0:
+                            continue
+                        syntaxer = ActionSyntaxer()
+                        lexer = Lexer(ActionLexerAdapter(syntaxer))
+                        for ch in line:
+                            lexer.feed(ch)
+                        lexer.eof()
+                        syntaxer.eof()
+                        if isinstance(syntaxer.result(), Call):
+                            action = syntaxer.result()
+                            actionkey = normalize(str(action).replace('()', '')).replace('__', '_').lower()
+                            actions.append(actionkey)
+                            actionmap[actionkey] = None
                     else:
-                        fsm.process(ctx, Event.OTHERS)
-                fsm.process(ctx, Event.EOI)
-                if ctx.action:
-                    ctx.action = normalize(ctx.action).replace('__', '_')
-                    actions[ctx.action] = 0
-                if not ctx.state or ctx.state == "":
-                    ctx.state = str(model[i][0])
-                transformings[i - 1].append((ctx.action, normalize(ctx.state).replace('__', '_')))
+                        state = line
+                if not state or state == '':
+                    state = None
+                transformings[i - 1].append((actions, normalize(state).replace('__', '_') if state else None))
             else:
-                transformings[i - 1].append((None, None))
-    return states, events, actions.keys(), transformings
+                transformings[i - 1].append(([], None))
+    return states, events, actionmap.keys(), transformings
 
 def main(src, prefix, directory, debug, style, lang):
     model = None
@@ -231,9 +201,6 @@ def main(src, prefix, directory, debug, style, lang):
     elif lang == "python":
         import python
         python.process(src, prefix, directory, debug, style, states, events, actions, transformings)
-    elif lang == 'dart':
-        import dart
-        dart.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == 'nim':
         import nim
         nim.process(src, prefix, directory, debug, style, states, events, actions, transformings)
@@ -251,6 +218,6 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--directory", help="The directory of generated files")
     parser.add_argument("--debug", action='store_true', help="Output debug info in console")
     parser.add_argument("--style", default="table", help="The style of fsm: code(code directly) or table(table driven)")
-    parser.add_argument("--lang", default="c", help="The target language of fsm: c, dart, dot, nim or python")
+    parser.add_argument("--lang", default="c", help="The target language of fsm: c, dot, nim or python")
     args = parser.parse_args()
     main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.debug, args.style, args.lang)
