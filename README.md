@@ -27,7 +27,7 @@ current state.
 
 2. Run naive-fsm-generator.py to generate source code like this:
 
-    fsm-geneator.py --prefix xxx fsm.txt --style table --target c
+    naive-fsm-geneator.py --prefix xxx fsm.txt --style table --target c
 
 in where prefix is useful when there are more than 1 finite state
 machine to use.
