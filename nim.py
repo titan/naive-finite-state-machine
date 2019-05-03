@@ -22,8 +22,10 @@ def action(prefix, actions):
 
 def code_transforming(prefix, states, events, transformings, debug):
     output = ' ' * 2 + 'StateMachine*[T] = object of RootObj\n'
-    output += ' ' * 4 + 'state: State\n'
+    output += ' ' * 4 + 'state*: State\n'
     output += ' ' * 4 + 'delegate: StateMachineDelegate[T]\n\n'
+    output += 'proc initStateMachine*[T](state: State, delegate: StateMachineDelegate[T]): StateMachine[T] =\n'
+    output += ' ' * 2 + 'result = StateMachine[T](state: state, delegate: delegate)\n\n' % (states[0])
     output += 'proc initStateMachine*[T](delegate: StateMachineDelegate[T]): StateMachine[T] =\n'
     output += ' ' * 2 + 'result = StateMachine[T](state: State.%s, delegate: delegate)\n\n' % (states[0])
     for ei in range(len(events)):
@@ -62,7 +64,7 @@ def code_transforming(prefix, states, events, transformings, debug):
 
 def table_transforming(prefix, states, events, actions, transformings, debug):
     output = ' ' * 2 + 'StateMachine*[T] = object of RootObj\n'
-    output += ' ' * 4 + 'state: int\n'
+    output += ' ' * 4 + 'state*: int\n'
     output += ' ' * 4 + 'delegate: StateMachineDelegate[T]\n'
     output += ' ' * 4 + 'transform_actions: array[0..%d, proc (delegate: StateMachineDelegate[T], ctx: var T)]\n\n' % ((len(states) + 1)* len(events) - 1)
     if debug:
@@ -108,7 +110,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
             else:
                 transforming_actions.append(None)
         transforming_actions_table.append(transforming_actions)
-    output += 'proc initStateMachine*[T](delegate: StateMachineDelegate[T]): StateMachine[T] =\n\n'
+    output += 'proc initStateMachine*[T](state: int, delegate: StateMachineDelegate[T]): StateMachine[T] =\n\n'
     output += ' ' * 2 + 'proc noop[T](delegate: StateMachineDelegate[T], ctx: var T) {.closure.} =\n'
     output += ' ' * 4 + 'discard\n\n'
     for (actionid, actions) in inner_actions.values():
@@ -117,7 +119,9 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
             output += ' ' * 4 + 'delegate.%s(ctx)\n' % action
         output += '\n'
     output += ' ' * 2 + 'let actions: array[0..%d, proc (delegate: StateMachineDelegate[T], ctx: var T)] = [%s]\n' % ((len(states) + 1) * len(events) - 1, ', '.join(['%s' % ', '.join(['noop[T]'] * len(events))] + ['%s' % ', '.join(['noop[T]' if y is None else 'action_%d[T]' % y for y in x]) for x in transforming_actions_table]))
-    output += ' ' * 2 + 'result = StateMachine[T](state: ord(State.%s), delegate: delegate, transform_actions: actions)\n\n' % (states[0])
+    output += ' ' * 2 + 'result = StateMachine[T](state: state, delegate: delegate, transform_actions: actions)\n\n'
+    output += 'proc initStateMachine*[T](delegate: StateMachineDelegate[T]): StateMachine[T] =\n'
+    output += ' ' * 2 + 'result = initStateMachine[T](ord(State.%s), delegate)\n\n' % (states[0])
     for evt in events:
         event = preprocess(evt, as_key = True)
         output += 'proc %s*[T](fsm: var StateMachine[T], ctx: var T) =\n' % (event.lower())
