@@ -87,7 +87,7 @@ def async_action_generator(indent, fun, actions):
         output += ' ' * (indent + 2) + 'let ctx{idx} = ctx{idx}fut.read\n'.format(idx = idx)
         idx += 1
     output += ' ' * (indent + 2) + 'complete(retfut, ctx{previdx})\n'.format(previdx = idx - 1)
-    output += ' ' * indent + 'var nameiter = {0}_iter\n'.format(fun)
+    output += ' ' * indent + 'var name_iter = {0}_iter\n'.format(fun)
     output += ' ' * indent + 'proc {0}_continue() {{.closure.}} =\n'.format(fun)
     output += ' ' * (indent + 2) + 'try:\n'
     output += ' ' * (indent + 4) + 'if not name_iter.finished:\n'
@@ -96,15 +96,15 @@ def async_action_generator(indent, fun, actions):
     output += ' ' * (indent + 8) + 'next = name_iter()\n'
     output += ' ' * (indent + 8) + 'if name_iter.finished:\n'
     output += ' ' * (indent + 10) + 'break\n'
-    output += ' ' * (indent + 8) + 'if next == nil:\n'
-    output += ' ' * (indent + 10) + 'if not retfut.finished:\n'
-    output += ' ' * (indent + 12) + 'let msg = "Async procedure ($1) yield `nil`, are you wait\'ing a " & "`nil` Future?"\n'
-    output += ' ' * (indent + 12) + 'raise newException(AssertionError, msg % "{0}")\n'.format(fun)
-    output += ' ' * (indent + 8) + 'else:\n'
-    output += ' ' * (indent + 10) + '{.gcsafe.}:\n'
-    output += ' ' * (indent + 12) + '{.push, hint[ConvFromXtoItselfNotNeeded]: off.}\n'
-    output += ' ' * (indent + 12) + 'next.callback = (proc () {{.closure, gcsafe.}})({0}_continue)\n'.format(fun)
-    output += ' ' * (indent + 12) + '{.pop.}\n'
+    output += ' ' * (indent + 6) + 'if next == nil:\n'
+    output += ' ' * (indent + 8) + 'if not retfut.finished:\n'
+    output += ' ' * (indent + 10) + 'let msg = "Async procedure ($1) yield `nil`, are you wait\'ing a " & "`nil` Future?"\n'
+    output += ' ' * (indent + 10) + 'raise newException(AssertionError, msg % "{0}")\n'.format(fun)
+    output += ' ' * (indent + 6) + 'else:\n'
+    output += ' ' * (indent + 8) + '{.gcsafe.}:\n'
+    output += ' ' * (indent + 10) + '{.push, hint[ConvFromXtoItselfNotNeeded]: off.}\n'
+    output += ' ' * (indent + 10) + 'next.callback = (proc () {{.closure, gcsafe.}})({0}_continue)\n'.format(fun)
+    output += ' ' * (indent + 10) + '{.pop.}\n'
     output += ' ' * (indent + 2) + 'except:\n'
     output += ' ' * (indent + 4) + 'if retfut.finished:\n'
     output += ' ' * (indent + 6) + 'raise\n'
