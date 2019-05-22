@@ -24,8 +24,8 @@ def transforming(states, events, transformings):
         if len(actions) > 0:
           tmp[si].append((events[ei].lower(), '\\n'.join(actions).replace('_', '-')))
   output = '@startuml\n'
-  output += '\n'.join(['state "{0}" as {1}'.format(state, preprocess(state).lower()) for state in states]) + '\n'
-  output += '[*] --> {0}\n'.format(preprocess(states[0]).lower())
+  output += '\n'.join(['state "{0}" as state{1}'.format(state.replace('\n', '\\n'), idx) for idx, state in enumerate(states)]) + '\n'
+  output += '[*] --> state0\n'.format(preprocess(states[0]).lower())
   for i in range(len(states)):
     for j in range(len(states)):
       label = []
@@ -35,7 +35,7 @@ def transforming(states, events, transformings):
         else:
           label.append(event)
       if len(label) > 0:
-        output += '%s --> %s : %s\n' % (preprocess(states[i]).lower(), preprocess(states[j]).lower(), "\\n\\n".join(label))
+        output += 'state{0} --> state{1} : {2}\n'.format(i, j, "\\n\\n".join(label))
   output += '@enduml\n'
   return output
 

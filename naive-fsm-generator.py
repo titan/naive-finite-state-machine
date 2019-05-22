@@ -42,9 +42,15 @@ def normalize(string):
     mappings['|'] = '_PIPE_'
     mappings['!'] = '_EXCLAM_'
     mappings['/'] = '_SLASH_'
+    mappings['$'] = '_DOLLAR_'
     for (k, v) in mappings.items():
         string = string.replace(k, v)
-    return string.replace(' ', '_').replace('__', '_').replace('__', '_').upper()
+    result = string.replace(' ', '_').replace('__', '_').upper()
+    if result[0] == '_':
+        result = result[1:]
+    if result[-1] == '_':
+        result = result[:-1]
+    return result
 
 def load_model_from_excel(filename):
     import xlrd
@@ -133,7 +139,7 @@ def load_model_from_table(src):
                 ctx.col += 1
     return ctx.rows
 
-def extract_model(model):
+def extract_model(model, normalizing = True):
     states = []
     events = []
     actionmap = {}
@@ -141,10 +147,10 @@ def extract_model(model):
     headers = model[0]
     for i in range(1, len(headers)):
         cell = headers[i]
-        events.append(normalize(str(cell)).replace('__', '_'))
+        events.append(str(cell) if not normalizing else normalize(str(cell)))
     for i in range(1, len(model)):
         cell = model[i][0]
-        states.append(normalize(str(cell)).replace('__', '_'))
+        states.append(str(cell) if not normalizing else normalize(str(cell)))
     for i in range(1, len(model)):
         transformings.append([])
         for j in range(1, len(model[i])):
@@ -152,7 +158,7 @@ def extract_model(model):
             if len(cell) > 0:
                 state_line = False
                 actions = []
-                state = None
+                statelines = []
                 for line in str(cell).split('\n'):
                     if line.startswith('----') or line.startswith('===='):
                         state_line = True
@@ -168,14 +174,20 @@ def extract_model(model):
                         syntaxer.eof()
                         if isinstance(syntaxer.result(), Call):
                             action = syntaxer.result()
-                            actionkey = normalize(str(action).replace('()', '')).replace('__', '_').lower()
+                            actionkey = normalize(str(action).replace('()', '')).lower() if normalizing else str(action).replace('()', '')
                             actions.append(actionkey)
                             actionmap[actionkey] = None
                     else:
-                        state = line
-                if not state or state == '':
+                        statelines.append(line)
+                while statelines.count('') > 0:
+                    statelines.remove('')
+                if len(statelines) == 0:
                     state = None
-                transformings[i - 1].append((actions, normalize(state).replace('__', '_') if state else None))
+                else:
+                    state = '\n'.join(statelines)
+                    if normalizing:
+                        state = normalize(state)
+                transformings[i - 1].append((actions, state))
             else:
                 transformings[i - 1].append(([], None))
     return states, events, actionmap.keys(), transformings
@@ -193,20 +205,24 @@ def main(src, prefix, directory, debug, style, lang):
     if model == None:
         print("Cannot load model from %s" % src)
         exit(-1)
-    (states, events, actions, transformings) = extract_model(model)
     if lang == "c":
+        (states, events, actions, transformings) = extract_model(model)
         import c
         c.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == "python":
+        (states, events, actions, transformings) = extract_model(model)
         import python
         python.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == 'nim':
+        (states, events, actions, transformings) = extract_model(model)
         import nim
         nim.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == 'dot':
+        (states, events, actions, transformings) = extract_model(model)
         import dot
         dot.process(src, prefix, directory, debug, style, states, events, actions, transformings)
     elif lang == 'plantuml':
+        (states, events, actions, transformings) = extract_model(model, normalizing = False)
         import plantuml
         plantuml.process(src, prefix, directory, debug, style, states, events, actions, transformings)
 
