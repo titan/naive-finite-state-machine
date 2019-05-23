@@ -1,6 +1,5 @@
 #! /usr/bin/python3
 
-from table_fsm import Delegate as TableDelegate
 from semantic import Assignment, Call, Expression, Identifier
 from analyzer import ActionSyntaxer, ActionLexerAdapter
 from lexer import Lexer
@@ -76,68 +75,13 @@ def load_model_from_csv(filename):
             model.append(line)
     return model
 
-class TableContext:
-    def __init__(self):
-        self.buf = ""
-        self.tmp = ""
-        self.ch = None
-        self.line = 1
-        self.col = 1
-        self.cells = []
-        self.lines = []
-        self.rows = []
-
-class MyTableDelegate(TableDelegate):
-    def error(self, ctx, state = 0, event = 0):
-        print("Invalid table format at col %d in line %d" % (ctx.col, ctx.line))
-        exit(-1)
-    def append(self, ctx, state = 0, event = 0):
-        ctx.buf += ctx.ch
-    def cell(self, ctx, state = 0, event = 0):
-        ctx.cells.append(ctx.buf.strip())
-        ctx.buf = ''
-    def line(self, ctx, state = 0, event = 0):
-        ctx.lines.append(ctx.cells)
-        ctx.cells = []
-    def row(self, ctx, state = 0, event = 0):
-        cells = []
-        for i in range(len(ctx.lines[0])):
-            cells.append([])
-        for row in range(len(ctx.lines)):
-            for col in range(len(ctx.lines[row])):
-                if len(ctx.lines[row][col]) > 0:
-                    cells[col].append(ctx.lines[row][col])
-        row = []
-        for c in cells:
-            row.append('\n'.join(c))
-        ctx.rows.append(row)
-        ctx.lines = []
-
 def load_model_from_table(src):
-    from table_fsm import Event, StateMachine
-    ctx = TableContext()
-    fsm = StateMachine(MyTableDelegate())
+    import table
+    model = []
     with open(src, 'r') as input:
-        content = input.read(-1)
-        for ch in content:
-            ctx.ch = ch
-            if ch == '\n':
-                ctx.line += 1
-                ctx.col = 1
-                fsm.process(ctx, Event.LF)
-            elif ch == '+':
-                fsm.process(ctx, Event.PLUS)
-                ctx.col += 1
-            elif ch == '-':
-                fsm.process(ctx, Event.MINUS)
-                ctx.col += 1
-            elif ch == '|':
-                fsm.process(ctx, Event.PIPE)
-                ctx.col += 1
-            else:
-                fsm.process(ctx, Event.OTHERS)
-                ctx.col += 1
-    return ctx.rows
+        content = input.read()
+        model = table.reader(content)
+    return model
 
 def extract_model(model, normalizing = True):
     states = []
