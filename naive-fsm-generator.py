@@ -44,7 +44,7 @@ def normalize(string):
     mappings['$'] = '_DOLLAR_'
     for (k, v) in mappings.items():
         string = string.replace(k, v)
-    result = string.replace(' ', '_').replace('__', '_').upper()
+    result = string.replace(' ', '_').replace('__', '_').replace('__', '_').upper()
     if result[0] == '_':
         result = result[1:]
     if result[-1] == '_':

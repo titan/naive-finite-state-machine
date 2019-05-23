@@ -40,7 +40,7 @@ def table_state_machine(states, events, asynced):
         asyncreturn = ": Future[T]"
     else:
         asyncprefix = ""
-        asyncreturn = ""
+        asyncreturn = ": T"
     output = ' ' * 2 + '{asyncprefix}StateMachine*[T] = object of RootObj\n'.format(asyncprefix = asyncprefix)
     output += ' ' * 4 + 'state*: int\n'
     output += ' ' * 4 + 'delegate*: {asyncprefix}StateMachineDelegate[T]\n'.format(asyncprefix = asyncprefix)
