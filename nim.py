@@ -15,11 +15,11 @@ def state(prefix, states):
     return output
 
 def action(prefix, actions):
-    output = ' ' * 2 + 'StateMachineDelegate*[T] = object of RootObj\n'
+    output = ' ' * 2 + 'StateMachineDelegate*[T] = ref object of RootObj\n'
     for action in actions:
         output += ' ' * 4 + '%s*: proc (ctx: T): T\n' % (action.lower())
     output += '\n'
-    output += ' ' * 2 + 'AsyncStateMachineDelegate*[T] = object of RootObj\n'
+    output += ' ' * 2 + 'AsyncStateMachineDelegate*[T] = ref object of RootObj\n'
     for action in actions:
         output += ' ' * 4 + '%s*: proc (ctx: T): Future[T]\n' % (action.lower())
     return output
@@ -29,8 +29,8 @@ def code_state_machine(states, events, asynced):
         asyncprefix = "Async"
     else:
         asyncprefix = ""
-    output = ' ' * 2 + '{asyncprefix}StateMachine*[T] = object of RootObj\n'.format(asyncprefix = asyncprefix)
-    output += ' ' * 4 + 'state*: State\n'
+    output = ' ' * 2 + '{asyncprefix}StateMachine*[T] = ref object of RootObj\n'.format(asyncprefix = asyncprefix)
+    output += ' ' * 4 + 'state*: int\n'
     output += ' ' * 4 + 'delegate*: {asyncprefix}StateMachineDelegate[T]\n\n'.format(asyncprefix = asyncprefix)
     return output
 
@@ -41,7 +41,7 @@ def table_state_machine(states, events, asynced):
     else:
         asyncprefix = ""
         asyncreturn = ": T"
-    output = ' ' * 2 + '{asyncprefix}StateMachine*[T] = object of RootObj\n'.format(asyncprefix = asyncprefix)
+    output = ' ' * 2 + '{asyncprefix}StateMachine*[T] = ref object of RootObj\n'.format(asyncprefix = asyncprefix)
     output += ' ' * 4 + 'state*: int\n'
     output += ' ' * 4 + 'delegate*: {asyncprefix}StateMachineDelegate[T]\n'.format(asyncprefix = asyncprefix)
     output += ' ' * 4 + 'transform_actions: array[0..{len}, proc (delegate: {asyncprefix}StateMachineDelegate[T], ctx: T){asyncreturn}]\n\n'.format(asyncprefix = asyncprefix, len = ((len(states) + 1)* len(events) - 1), asyncreturn = asyncreturn)
@@ -126,14 +126,19 @@ def code_transforming(prefix, states, events, transformings, debug, asynced):
         awaitprefix = ""
         asyncreturn = ": T"
     output = ''
-    output += 'proc init{asyncprefix}StateMachine*[T](state: State, delegate: {asyncprefix}StateMachineDelegate[T]): {asyncprefix}StateMachine[T] =\n'.format(asyncprefix = asyncprefix)
-    output += ' ' * 2 + 'result = {asyncprefix}StateMachine[T](state: state, delegate: delegate)\n\n'.format(asyncprefix = asyncprefix)
-    output += 'proc init{asyncprefix}StateMachine*[T](delegate: {asyncprefix}StateMachineDelegate[T]): {asyncprefix}StateMachine[T] =\n'.format(asyncprefix = asyncprefix)
-    output += ' ' * 2 + 'result = {asyncprefix}StateMachine[T](state: State.{state}, delegate: delegate)\n\n'.format(asyncprefix = asyncprefix, state = states[0])
+    output += 'proc new{asyncprefix}StateMachine*[T](state: int, delegate: {asyncprefix}StateMachineDelegate[T]): {asyncprefix}StateMachine[T] =\n'.format(asyncprefix = asyncprefix)
+    output += ' ' * 2 + 'result = new({asyncprefix}StateMachine[T])\n'.format(asyncprefix = asyncprefix)
+    output += ' ' * 2 + 'result.state = state\n'
+    output += ' ' * 2 + 'result.delegate = delegate\n\n'
+    output += 'proc new{asyncprefix}StateMachine*[T](delegate: {asyncprefix}StateMachineDelegate[T]): {asyncprefix}StateMachine[T] =\n'.format(asyncprefix = asyncprefix)
+    output += ' ' * 2 + 'result = new({asyncprefix}StateMachine[T])\n'.format(asyncprefix = asyncprefix)
+    output += ' ' * 2 + 'result.state = ord(State.{state})\n'.format(state = states[0])
+    output += ' ' * 2 + 'result.delegate = delegate\n\n'
     for ei in range(len(events)):
         output += 'proc {event}*[T](fsm: var {asyncprefix}StateMachine[T], ctx0: T){asyncreturn} {asyncpragma}=\n'.format(event = preprocess(events[ei], as_key = True).lower(), asyncprefix = asyncprefix, asyncreturn = asyncreturn, asyncpragma = asyncpragma)
         output += ' ' * 2 + 'let delegate = fsm.delegate\n'
-        output += ' ' * 2 + 'case fsm.state:\n'
+        output += ' ' * 2 + 'let state = State(fsm.state)\n'
+        output += ' ' * 2 + 'case state:\n'
         count = 0
         for si in range(len(states)):
             (actions, state) = transformings[si][ei]
@@ -156,8 +161,13 @@ def code_transforming(prefix, states, events, transformings, debug, asynced):
                 else:
                     if debug:
                         output += ' ' * 6 + 'echo("(%s, %s) => (N/A, %s)");\n' % (events[ei], states[si], preprocess(state))
+                    if asynced:
+                        output += ' ' * 6 + 'result = newFuture[T]("{0}")\n'.format(preprocess(events[ei], as_key = True).lower())
+                        output += ' ' * 6 + 'result.complete(ctx0)\n'
+                    else:
+                        output += ' ' * 6 + 'result = ctx0\n'
                 if state != states[si]:
-                    output += ' ' * 6 + 'fsm.state = State.%s\n' % (preprocess(state))
+                    output += ' ' * 6 + 'fsm.state = ord(State.%s)\n' % (preprocess(state))
             elif len(actions) > 0:
                 count += 1
                 output += ' ' * 4 + 'of State.%s:\n' % (states[si])
@@ -220,7 +230,7 @@ def table_transforming(prefix, states, events, actions, transformings, debug, as
             else:
                 transforming_actions.append(None)
         transforming_actions_table.append(transforming_actions)
-    output += 'proc init{asyncprefix}StateMachine*[T](state: int, delegate: {asyncprefix}StateMachineDelegate[T]): {asyncprefix}StateMachine[T] =\n\n'.format(asyncprefix = asyncprefix)
+    output += 'proc new{asyncprefix}StateMachine*[T](state: int, delegate: {asyncprefix}StateMachineDelegate[T]): {asyncprefix}StateMachine[T] =\n\n'.format(asyncprefix = asyncprefix)
     output += ' ' * 2 + 'proc noop[T](delegate: {asyncprefix}StateMachineDelegate[T], ctx: T){asyncreturn} {{.closure{innerpragma}.}} =\n'.format(asyncprefix = asyncprefix, innerpragma = innerpragma, asyncreturn = asyncreturn)
     output += ' ' * 4 + 'result = ctx\n\n'
     for (actionid, actions) in inner_actions.values():
@@ -238,9 +248,12 @@ def table_transforming(prefix, states, events, actions, transformings, debug, as
             output += async_action_generator(4, "action_{0}".format(actionid), actions)
             output += '\n'
     output += ' ' * 2 + 'let actions: array[0..{len}, proc (delegate: {asyncprefix}StateMachineDelegate[T], ctx: T){asyncreturn}] = [{actions}]\n'.format(len = (len(states) + 1) * len(events) - 1, actions = ', '.join(['%s' % ', '.join(['noop[T]'] * len(events))] + ['%s' % ', '.join(['noop[T]' if y is None else 'action_%d[T]' % y for y in x]) for x in transforming_actions_table]), asyncprefix = asyncprefix, asyncreturn = asyncreturn)
-    output += ' ' * 2 + 'result = {asyncprefix}StateMachine[T](state: state, delegate: delegate, transform_actions: actions)\n\n'.format(asyncprefix = asyncprefix)
-    output += 'proc init{asyncprefix}StateMachine*[T](delegate: {asyncprefix}StateMachineDelegate[T]): {asyncprefix}StateMachine[T] =\n'.format(asyncprefix = asyncprefix)
-    output += ' ' * 2 + 'result = init{asyncprefix}StateMachine[T](ord(State.{state}), delegate)\n\n'.format(asyncprefix = asyncprefix, state = states[0])
+    output += ' ' * 2 + 'result = new({asyncprefix}StateMachine[T])\n'.format(asyncprefix = asyncprefix)
+    output += ' ' * 2 + 'result.state = state\n'
+    output += ' ' * 2 + 'result.delegate = delegate\n'
+    output += ' ' * 2 + 'result.transform_actions = actions\n\n'
+    output += 'proc new{asyncprefix}StateMachine*[T](delegate: {asyncprefix}StateMachineDelegate[T]): {asyncprefix}StateMachine[T] =\n'.format(asyncprefix = asyncprefix)
+    output += ' ' * 2 + 'result = new{asyncprefix}StateMachine[T](ord(State.{state}), delegate)\n\n'.format(asyncprefix = asyncprefix, state = states[0])
     for evt in events:
         event = preprocess(evt, as_key = True)
         output += 'proc {event}*[T](fsm: var {asyncprefix}StateMachine[T], ctx: T){asyncreturn} =\n'.format(event = event.lower(), asyncprefix = asyncprefix, asyncreturn = asyncreturn)
