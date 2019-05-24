@@ -173,7 +173,8 @@ def main(src, prefix, directory, debug, style, lang):
 if __name__ == '__main__':
     import argparse
     import sys
-    from os.path import basename
+    import os
+    from os.path import dirname, exists, join, split
     parser = argparse.ArgumentParser()
     parser.add_argument("src", help="The defination of state machine in xlsx or csv")
     parser.add_argument("-p", "--prefix", default="", help="The prefix of generated structures and functions")
@@ -182,4 +183,22 @@ if __name__ == '__main__':
     parser.add_argument("--style", default="table", help="The style of fsm: code(code directly) or table(table driven)")
     parser.add_argument("--lang", default="c", help="The target language of fsm: c, dot, nim, plantuml or python")
     args = parser.parse_args()
+    if not args.directory:
+        args.directory = dirname(args.src)
+    else:
+        (h0, t0) = split(args.directory)
+        (h1, t1) = split(h0)
+        dirs = [t0]
+        while h0 != h1:
+            dirs.append(t1)
+            h0 = h1
+            (h1, t1) = split(h0)
+        if args.directory.startswith("/") or args.directory.startswith("\\"):
+            target = args.directory[0]
+        else:
+            target = ""
+        for dir in reversed(dirs):
+            target = join(target, dir)
+            if not exists(target):
+                os.mkdir(target)
     main(args.src, args.prefix.replace('-', '_').upper(), args.directory, args.debug, args.style, args.lang)
