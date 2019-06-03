@@ -10,16 +10,29 @@ class TableContext:
         self.cells = []
         self.lines = []
         self.rows = []
+        self.cellwidths = []
+        self.cellwidth = 0
+        self.cellindex = 0
 
 class MyTableDelegate(TableDelegate):
     def error(self, ctx, state = 0, event = 0):
         print("Invalid table format at col %d in line %d" % (ctx.col, ctx.line))
         exit(-1)
+    def reset_cell_index(self, ctx):
+        ctx.cellindex = 0
+    def append_width(self, ctx):
+        ctx.cellwidths.append(ctx.cellwidth)
+    def reset_width(self, ctx):
+        ctx.cellwidth = 0
+    def incr_width(self, ctx):
+        ctx.cellwidth += 1
     def append(self, ctx, state = 0, event = 0):
         ctx.buf += ctx.ch
     def cell(self, ctx, state = 0, event = 0):
         ctx.cells.append(ctx.buf.strip())
         ctx.buf = ''
+    def incr_cell_index(self, ctx):
+        ctx.cellindex += 1
     def line(self, ctx, state = 0, event = 0):
         ctx.lines.append(ctx.cells)
         ctx.cells = []
@@ -47,6 +60,8 @@ class MyTableDelegate(TableDelegate):
             row.append('\n'.join(c))
         ctx.rows.append(row)
         ctx.lines = []
+    def clear_widths(self, ctx):
+        ctx.cellwidths = []
 
 def reader(src):
     ctx = TableContext()
@@ -64,7 +79,13 @@ def reader(src):
             fsm.minus(ctx)
             ctx.col += 1
         elif ch == '|':
-            fsm.pipe(ctx)
+            splitors = [1]
+            for cellwidth in ctx.cellwidths:
+                splitors.append(splitors[-1] + cellwidth + 1)
+            if ctx.col in splitors:
+                fsm.pipe(ctx)
+            else:
+                fsm.pipe_in_cell(ctx)
             ctx.col += 1
         else:
             fsm.others(ctx)
