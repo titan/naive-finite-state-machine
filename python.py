@@ -1,3 +1,10 @@
+def _python_normalize(string: str) -> str:
+    keywords = [ "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield" ]
+    if string in keywords:
+        return 'my_' + string
+    else:
+        return string
+
 def preprocess(cell, as_key = False):
     if cell.startswith('_'):
         cell = cell[1:]
@@ -6,6 +13,7 @@ def preprocess(cell, as_key = False):
     if as_key:
         if cell[0].isdigit():
             cell = "NUMBER_" + cell
+        cell = _python_normalize(cell)
     return cell
 
 def state(prefix, states):
