@@ -138,8 +138,9 @@ def table_transforming(prefix, states, events, actions, transformings, debug):
         if debug:
             output += " " * 8 + "global _state_strings, _event_strings, _action_strings\n"
             output += " " * 8 + 'print("({1}, %s) => (%s, %s)" % (_state_strings[self.state], _action_strings[self.state][{0}], _state_strings[self.state +_transform_states[self.state][{0}]]))\n'.format(ei, preprocess(evt).upper());
-        output += " " * 8 + "self._transform_actions[self.state][%d](ctx)\n" % ei
-        output += " " * 8 + "self.state += _transform_states[self.state][%d]\n\n" % ei
+        output += " " * 8 + "prevstate = self.state\n"
+        output += " " * 8 + "self._transform_actions[prevstate][%d](ctx)\n" % ei
+        output += " " * 8 + "self.state += _transform_states[prevstate][%d]\n\n" % ei
     for (actionid, actions) in inner_actions.values():
         output += ' ' * 4 + 'def _action_%d(self, ctx):\n' % actionid
         for action in actions:
