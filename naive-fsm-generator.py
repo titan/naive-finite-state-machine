@@ -28,7 +28,7 @@ def normalize(string):
     mappings[':'] = '_COLON_'
     mappings[','] = '_COMMA_'
     mappings[';'] = '_SEMI_COLON_'
-    mappings['"'] = '_DOUBLE_QUOTES_'
+    mappings['"'] = '_QUOTES_'
     mappings["'"] = '_APOSTROPHE_'
     mappings['.'] = '_DOT_'
     mappings['?'] = '_QUESTION_'
